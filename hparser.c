@@ -1,4 +1,4 @@
-/* $Id: hparser.c,v 2.66 2001/03/30 08:10:36 gisle Exp $
+/* $Id: hparser.c,v 2.69 2001/04/10 20:10:58 gisle Exp $
  *
  * Copyright 1999-2001, Gisle Aas
  * Copyright 1999-2000, Michael A. Chase
@@ -51,7 +51,7 @@ enum argcode {
     ARG_LITERAL, /* Always keep last */
 
     /* extra flags always encoded first */
-    ARG_FLAG_FLAT_ARRAY,
+    ARG_FLAG_FLAT_ARRAY
 };
 
 char *argname[] = {
@@ -200,11 +200,11 @@ report_event(PSTATE* p_state,
     if (p_state->ignore_tags || p_state->report_tags || p_state->ignore_elements) {
 
 	if (event == E_START || event == E_END) {
-	    SV* tagname;
+	    SV* tagname = p_state->tmp;
 	    U32 hash;
 
 	    assert(num_tokens >= 1);
-	    tagname = newSVpvn(tokens[0].beg, tokens[0].end - tokens[0].beg);
+	    sv_setpvn(tagname, tokens[0].beg, tokens[0].end - tokens[0].beg);
 	    if (!p_state->xml_mode)
 		sv_lower(aTHX_ tagname);
 
@@ -217,7 +217,6 @@ report_event(PSTATE* p_state,
 			p_state->ignoring_element = 0;
 		    }
 		}
-		SvREFCNT_dec(tagname);
 		return;
 	    }
 
@@ -226,7 +225,7 @@ report_event(PSTATE* p_state,
 	    if (p_state->ignore_elements &&
 		hv_fetch_ent(p_state->ignore_elements, tagname, 0, hash))
 	    {
-		p_state->ignoring_element = tagname;
+		p_state->ignoring_element = newSVsv(tagname);
 		p_state->ignore_depth = 1;
 		return;
 	    }
@@ -234,13 +233,11 @@ report_event(PSTATE* p_state,
 	    if (p_state->ignore_tags &&
 		hv_fetch_ent(p_state->ignore_tags, tagname, 0, hash))
 	    {
-		SvREFCNT_dec(tagname);
 		return;
 	    }
 	    if (p_state->report_tags &&
 		!hv_fetch_ent(p_state->report_tags, tagname, 0, hash))
 	    {
-		SvREFCNT_dec(tagname);
 		return;
 	    }
 	}
@@ -609,7 +606,7 @@ argspec_compile(SV* src, PSTATE* p_state)
 		    croak("Literal string is longer than 255 chars in argspec");
 		buf[0] = ARG_LITERAL;
 		buf[1] = len;
-		sv_catpvn(argspec, buf, 2);
+		sv_catpvn(argspec, (char*)buf, 2);
 		sv_catpvn(argspec, string_beg+1, len);
 		s++;
 	    }
