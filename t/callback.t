@@ -51,7 +51,7 @@ eval {
    $p->parse(sub { die "Hi" });
 };
 print "ERRSV: $@";
-print "not " unless $@ && $@ =~ /^Hi/;
+print "not " unless $@ && $@ =~ /^# Hi/;
 print "ok $testno\n";
 $testno++;
 
