@@ -1,4 +1,4 @@
-/* $Id: Parser.xs,v 2.89 2000/09/14 18:20:32 gisle Exp $
+/* $Id: Parser.xs,v 2.92 2000/09/17 01:48:07 gisle Exp $
  *
  * Copyright 1999-2000, Gisle Aas.
  * Copyright 1999-2000, Michael A. Chase.
@@ -49,6 +49,10 @@ newSVpvn(char *s, STRLEN len)
 }
 #endif /* not perl5.004_05 */
 #endif /* perl5.004_XX */
+
+#if 0 /* Makefile.PL option now */ && (PATCHLEVEL >= 6)
+#define UNICODE_ENTITIES /**/
+#endif /* perl-5.6 or better */
 
 #ifndef MEMBER_TO_FPTR
    #define MEMBER_TO_FPTR(x) (x)
@@ -331,6 +335,18 @@ decode_entities(...)
 	    decode_entities(ST(i), entity2char);
 	}
 	SP += items;
+
+int
+UNICODE_SUPPORT()
+    PROTOTYPE:
+    CODE:
+#ifdef UNICODE_ENTITIES
+       RETVAL = 1;
+#else
+       RETVAL = 0;
+#endif
+    OUTPUT:
+       RETVAL
 
 
 MODULE = HTML::Parser		PACKAGE = HTML::Parser

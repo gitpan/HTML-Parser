@@ -1,6 +1,6 @@
-/* $Id: util.c,v 2.2 1999/12/03 12:20:42 gisle Exp $
+/* $Id: util.c,v 2.6 2000/09/17 01:19:53 gisle Exp $
  *
- * Copyright 1999, Gisle Aas.
+ * Copyright 1999-2000, Gisle Aas.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the same terms as Perl itself.
@@ -21,7 +21,6 @@ sv_lower(SV* sv)
    return sv;
 }
 
-
 EXTERN SV*
 decode_entities(SV* sv, HV* entity2char)
 {
@@ -33,7 +32,13 @@ decode_entities(SV* sv, HV* entity2char)
 
   char *repl;
   STRLEN repl_len;
+#ifdef UNICODE_ENTITIES
+  char buf[UTF8_MAXLEN];
+  int has_utf8 = 0;
+  int repl_utf8;
+#else
   char buf[1];
+#endif
   
 
   while (s < end) {
@@ -46,11 +51,9 @@ decode_entities(SV* sv, HV* entity2char)
     repl = 0;
 
     if (*s == '#') {
-      int num = 0;
-      /* currently this code is limited to numeric references with values
-       * below 256.  Doing more need Unicode support.
-       */
-
+      UV num = 0;
+      UV prev = 0;
+      int ok = 0;
       s++;
       if (*s == 'x' || *s == 'X') {
 	char *tmp;
@@ -59,23 +62,51 @@ decode_entities(SV* sv, HV* entity2char)
 	  char *tmp = strchr(PL_hexdigit, *s);
 	  if (!tmp)
 	    break;
-	  s++;
-	  if (num < 256) {
-	    num = num << 4 | ((tmp - PL_hexdigit) & 15);
+	  num = num << 4 | ((tmp - PL_hexdigit) & 15);
+	  if (prev && num <= prev) {
+	      /* overflow */
+	      ok = 0;
+	      break;
 	  }
+	  prev = num;
+	  s++;
+	  ok = 1;
 	}
       }
       else {
 	while (isDIGIT(*s)) {
-	  if (num < 256)
-	    num = num*10 + (*s - '0');
+	  num = num * 10 + (*s - '0');
+	  if (prev && num < prev) {
+	      /* overflow */
+	      ok = 0;
+	      break;
+	  }
+	  prev = num;
 	  s++;
+	  ok = 1;
 	}
       }
-      if (num && num < 256) {
-	buf[0] = num;
-	repl = buf;
-	repl_len = 1;
+      if (ok) {
+#ifdef UNICODE_ENTITIES
+	if (!SvUTF8(sv) && num <= 255) {
+	  buf[0] = num;
+	  repl = buf;
+	  repl_len = 1;
+	  repl_utf8 = 0;
+	}
+	else {
+	  char *tmp = uv_to_utf8(buf, num);
+	  repl = buf;
+	  repl_len = tmp - buf;
+	  repl_utf8 = 1;
+	}
+#else
+	if (num <= 255) {
+	  buf[0] = num & 0xFF;
+	  repl = buf;
+	  repl_len = 1;
+	}
+#endif
       }
     }
     else {
@@ -84,8 +115,12 @@ decode_entities(SV* sv, HV* entity2char)
 	s++;
       if (ent_name != s && entity2char) {
 	SV** svp = hv_fetch(entity2char, ent_name, s - ent_name, 0);
-	if (svp)
+	if (svp) {
 	  repl = SvPV(*svp, repl_len);
+#ifdef UNICODE_ENTITIES
+	  repl_utf8 = SvUTF8(*svp);
+#endif
+	}
       }
     }
 
@@ -93,8 +128,41 @@ decode_entities(SV* sv, HV* entity2char)
       if (*s == ';')
 	s++;
       t--;  /* '&' already copied, undo it */
-      if (t + repl_len > s)
-	croak("Growing string not supported yet");
+
+#ifdef UNICODE_ENTITIES
+      if (!SvUTF8(sv) && repl_utf8) {
+	  /* need to upgrade */
+	  int old_len = t - SvPVX(sv);
+	  int len = old_len;
+	  char *ustr = bytes_to_utf8(SvPVX(sv), &len);
+	  int grow = len - old_len;
+	  if (grow) {
+	      int entity_len = s - t;
+	      SvGROW(sv, SvCUR(sv) + grow + 1);
+	      s = SvPVX(sv) + old_len + entity_len;
+	      Move(s, s+grow, SvEND(sv) - s + 1, char);
+	      s += grow;
+	      Copy(ustr, SvPVX(sv), len, char);
+	      t = SvPVX(sv) + len;
+	  }
+	  Safefree(ustr);
+	  SvUTF8_on(sv);
+      }
+#endif
+
+      if (t + repl_len > s) {
+	/* need to grow the string */
+	STRLEN t_offset = t - SvPVX(sv);
+	STRLEN s_offset = s - SvPVX(sv);
+	int grow = repl_len - (s - t);
+	SvGROW(sv, SvCUR(sv) + grow + 1);
+	t = SvPVX(sv) + t_offset;
+	s = SvPVX(sv) + s_offset;
+	Move(s, s+grow, SvEND(sv) - s + 1, char);
+	s += grow;
+      }
+
+      /* copy replacement string into string */
       while (repl_len--)
 	*t++ = *repl++;
     }
