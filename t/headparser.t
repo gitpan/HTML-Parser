@@ -1,4 +1,8 @@
-print "1..4\n";
+#!perl -w
+
+use strict;
+use Test qw(plan ok skip);
+plan tests => 6;
 
 { package H;
   sub new { bless {}, shift; }
@@ -8,7 +12,7 @@ print "1..4\n";
      my $key  = uc(shift);
      my $old = $self->{$key};
      if (@_) { $self->{$key} = shift; }
-     $old;     
+     $old;
   }
 
   sub push_header {
@@ -40,7 +44,7 @@ print "1..4\n";
 }
 
 
-$HTML = <<'EOT';
+my $HTML = <<'EOT';
 
 <title>&Aring være eller &#229; ikke være</title>
 <meta http-equiv="Expires" content="Soon">
@@ -49,6 +53,7 @@ $HTML = <<'EOT';
 
 <script>
 
+   "</script>"
     ignore this
 
 </script>
@@ -62,6 +67,7 @@ Dette er vanlig tekst.  Denne teksten definerer også slutten på
 
 <style>
 
+   "</style>"
    ignore this too
 
 </style>
@@ -76,9 +82,9 @@ $| = 1;
 
 #$HTML::HeadParser::DEBUG = 1;
 require HTML::HeadParser;
-$p = HTML::HeadParser->new( H->new );
+my $p = HTML::HeadParser->new( H->new );
 
-$bad = 0;
+my $bad = 0;
 
 print "\n#### Parsing full text...\n";
 if ($p->parse($HTML)) {
@@ -96,23 +102,19 @@ $p->header('Link') =~ /<mailto:gisle\@aas.no>/ or $bad++;
 # This header should not be present because the head ended
 $p->header('Isindex') and $bad++;
 
-print "not " if $bad;
-print "ok 1\n";
+ok(!$bad);
 
 
 # Try feeding one char at a time
 print "\n\n#### Parsing once char at a time...\n";
-$expected = $p->as_string;
+my $expected = $p->as_string;
 $p = HTML::HeadParser->new(H->new);
 while ($HTML =~ /(.)/sg) {
     print $1;
     $p->parse($1) or last;
 }
 print "«««« Enough!!\n";
-$got = $p->as_string;
-print "$got";
-print "not " if $expected ne $got;
-print "ok 2\n";
+ok($p->as_string, $expected);
 
 
 # Try reading it from a file
@@ -132,8 +134,7 @@ unlink($file) or warn "Can't unlink $file: $!";
 
 print $p->as_string;
 
-print "not " if $p->header("Title") ne "Å være eller å ikke være";
-print "ok 3\n";
+ok($p->header("Title"), "Å være eller å ikke være");
 
 
 # We got into an infinite loop on data without tags and no EOL.
@@ -143,11 +144,23 @@ open(FILE, ">$file") or die "Can't create $file: $!";
 print FILE "Foo";
 close(FILE);
 
+print "\n\n#### BOM\n";
 $p = HTML::HeadParser->new(H->new);
 $p->parse_file($file);
 unlink($file) or warn "Can't unlink $file: $!";
 
-print "not " if $p->as_string;
-print "ok 4\n";
+ok(!$p->as_string);
 
+if ($] < 5.008) {
+    for (1..2) {
+	skip("Need Unicode support", 1);
+    }
+}
+else {
+    # Test that the Unicode BOM does not confuse us?
+    $p = HTML::HeadParser->new(H->new);
+    ok($p->parse("\x{FEFF}\n<title>Hi <foo></title>"));
+    $p->eof;
 
+    ok($p->header("title"), "Hi <foo>");
+}

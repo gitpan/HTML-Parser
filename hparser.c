@@ -1,4 +1,4 @@
-/* $Id: hparser.c,v 2.104 2004/11/17 14:09:41 gisle Exp $
+/* $Id: hparser.c,v 2.110 2004/11/23 10:56:33 gisle Exp $
  *
  * Copyright 1999-2004, Gisle Aas
  * Copyright 1999-2000, Michael A. Chase
@@ -171,6 +171,16 @@ report_event(PSTATE* p_state,
 	}
     }
 #endif
+
+    if (p_state->pending_end_tag && event != E_TEXT && event != E_COMMENT) {
+	token_pos_t t;
+	char dummy;
+	t.beg = p_state->pending_end_tag;
+	t.end = p_state->pending_end_tag + strlen(p_state->pending_end_tag);
+	p_state->pending_end_tag = 0;
+	report_event(p_state, E_END, &dummy, &dummy, 0, &t, 1, self);
+	SPAGAIN;
+    }
 
     /* update offsets */
     p_state->offset += CHR_DIST(end, beg);
@@ -683,6 +693,9 @@ argspec_compile(SV* src, PSTATE* p_state)
 			p_state->skipped_text = newSVpvn("", 0);
                     }
                 }
+		if (a == ARG_ATTR || a == ARG_ATTRARR || a == ARG_DTEXT) {
+		    p_state->argspec_entity_decode++;
+		}
 	    }
 	    else {
 		croak("Unrecognized identifier %.*s in argspec", s - name, name);
@@ -1472,10 +1485,31 @@ parse_buf(pTHX_ PSTATE* p_state, char *beg, char *end, U32 utf8, SV* self)
 
 	while (p_state->literal_mode) {
 	    char *l = p_state->literal_mode;
+	    bool skip_quoted_end = (strEQ(l, "script") || strEQ(l, "style"));
+	    char inside_quote = 0;
+	    bool escape_next = 0;
 	    char *end_text;
 
-	    while (s < end && *s != '<')
+	    while (s < end) {
+		if (*s == '<' && !inside_quote)
+		    break;
+		if (skip_quoted_end) {
+		    if (escape_next) {
+			escape_next = 0;
+		    }
+		    else {
+			if (*s == '\\')
+			    escape_next = 1;
+			else if (inside_quote && *s == inside_quote)
+			    inside_quote = 0;
+			else if (*s == '\r' || *s == '\n')
+			    inside_quote = 0;
+			else if (*s == '"' || *s == '\'')
+			    inside_quote = *s;
+		    }
+		}
 		s++;
+	    }
 
 	    if (s == end) {
 		s = t;
@@ -1654,33 +1688,44 @@ parse(pTHX_
 	    /* flush it */
 	    s = SvPV(p_state->buf, len);
 	    end = s + len;
+	    utf8 = SvUTF8(p_state->buf);
 	    assert(len);
-	    if (!p_state->strict_comment && !p_state->is_cdata) {
-		if (*s == '<') {
-		    /* try to parse with comments terminated with a plain '>' first */
-		    p_state->no_dash_dash_comment_end = 1;
-		    s = parse_buf(aTHX_ p_state, s, end, SvUTF8(p_state->buf), self);
+
+	    while (s < end) {
+		if (p_state->literal_mode) {
+		    if (strEQ(p_state->literal_mode, "plaintext") && !p_state->closing_plaintext)
+			break;
+		    p_state->pending_end_tag = p_state->literal_mode;
+		    p_state->literal_mode = 0;
+		    s = parse_buf(aTHX_ p_state, s, end, utf8, self);
+		    continue;
 		}
-		if (*s == '<') {
+
+		if (!p_state->strict_comment && !p_state->no_dash_dash_comment_end && *s == '<') {
+		    p_state->no_dash_dash_comment_end = 1;
+		    s = parse_buf(aTHX_ p_state, s, end, utf8, self);
+		    continue;
+		}
+
+		if (!p_state->strict_comment && *s == '<') {
 		    /* some kind of unterminated markup.  Report rest as as comment */
 		    token_pos_t token;
 		    token.beg = s + 1;
 		    token.end = end;
 		    report_event(p_state, E_COMMENT, s, end, utf8, &token, 1, self);
-		    SvREFCNT_dec(p_state->buf);
-		    p_state->buf = 0;
+		    s = end;
 		}
-		else {
-		    goto REST_IS_TEXT;
-		}
+
+		break;
 	    }
-	    else  {
+
+	    if (s < end) {
 		/* report rest as text */
-	    REST_IS_TEXT:
 		report_event(p_state, E_TEXT, s, end, utf8, 0, 0, self);
-		SvREFCNT_dec(p_state->buf);
-		p_state->buf = 0;
 	    }
+	    
+	    SvREFCNT_dec(p_state->buf);
+	    p_state->buf = 0;
 	}
 	if (p_state->pend_text && SvOK(p_state->pend_text))
 	    flush_pending_text(p_state, self);
@@ -1710,8 +1755,39 @@ parse(pTHX_
     else {
 	beg = SvPV(chunk, len);
 	utf8 = SvUTF8(chunk);
-	if (p_state->offset == 0)
+	if (p_state->offset == 0) {
 	    report_event(p_state, E_START_DOCUMENT, beg, beg, 0, 0, 0, self);
+
+	    /* Print warnings if we find unexpected Unicode BOM forms */
+#ifdef UNICODE_HTML_PARSER
+	    if (DOWARN &&
+                (!utf8 && len >= 3 && strnEQ(beg, "\xEF\xBB\xBF", 3)) ||
+		(utf8 && len >= 6 && strnEQ(beg, "\xC3\xAF\xC2\xBB\xC2\xBF", 6))
+	       )
+	    {
+		if (p_state->argspec_entity_decode)
+		    warn("Parsing of undecoded UTF-8 will give garbage when decoding entities");
+	    }
+	    if (DOWARN && utf8 && len >= 2 && strnEQ(beg, "\xFF\xFE", 2)) {
+		warn("Parsing string decoded with wrong endianess");
+	    }
+#endif
+	    if (DOWARN) {
+		if (!utf8 && len >= 4 &&
+		    (strnEQ(beg, "\x00\x00\xFE\xFF", 4) ||
+		     strnEQ(beg, "\xFE\xFF\x00\x00", 4))
+		    )
+		{
+		    warn("Parsing of undecoded UTF-32");
+		}
+		else if (!utf8 && len >= 2 &&
+			 (strnEQ(beg, "\xFE\xFF", 2) || strnEQ(beg, "\xFF\xFE", 2))
+		    )
+		{
+		    warn("Parsing of undecoded UTF-16");
+		}
+	    }
+	}
     }
 
     if (!len)
