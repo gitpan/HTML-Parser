@@ -1,6 +1,6 @@
 package HTML::Parser;
 
-# Copyright 1996-2000, Gisle Aas.
+# Copyright 1996-2001, Gisle Aas.
 # Copyright 1999-2000, Michael A. Chase.
 #
 # This library is free software; you can redistribute it and/or
@@ -9,7 +9,7 @@ package HTML::Parser;
 use strict;
 use vars qw($VERSION @ISA);
 
-$VERSION = '3.15';  # $Date: 2000/12/26 09:00:37 $
+$VERSION = '3.16';  # $Date: 2001/02/01 06:05:25 $
 
 require HTML::Entities;
 
@@ -137,13 +137,6 @@ __END__
 =head1 NAME
 
 HTML::Parser - HTML parser class
-
-=head1 NOTE
-
-This is the new XS based HTML::Parser.
-It should be completely backwards compatible with
-HTML::Parser version 2.2x, but has many new features
-and is significantly faster.
 
 =head1 SYNOPSIS
 
@@ -944,7 +937,7 @@ be found at C<http://www.sgml.u-net.com/book/sgml-8.htm>.
 
 =head1 COPYRIGHT
 
- Copyright 1996-2000 Gisle Aas. All rights reserved.
+ Copyright 1996-2001 Gisle Aas. All rights reserved.
  Copyright 1999-2000 Michael A. Chase.  All rights reserved.
 
 This library is free software; you can redistribute it and/or
