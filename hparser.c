@@ -1,4 +1,4 @@
-/* $Id: hparser.c,v 2.93 2003/10/03 13:09:05 gisle Exp $
+/* $Id: hparser.c,v 2.95 2004/04/01 11:56:37 gisle Exp $
  *
  * Copyright 1999-2002, Gisle Aas
  * Copyright 1999-2000, Michael A. Chase
@@ -414,7 +414,10 @@ report_event(PSTATE* p_state,
 			sv_lower(aTHX_ attrname);
 
 		    if (argcode == ARG_ATTR) {
-			if (!hv_store_ent(hv, attrname, attrval, 0)) {
+			U32 hash;
+			PERL_HASH(hash, SvPVX(attrname), SvCUR(attrname));
+			if (hv_exists_ent(hv, attrname, hash) ||
+			    !hv_store_ent(hv, attrname, attrval, hash)) {
 			    SvREFCNT_dec(attrval);
 			}
 			SvREFCNT_dec(attrname);
