@@ -1,4 +1,4 @@
-/* $Id: Parser.xs,v 2.127 2004/11/23 20:38:25 gisle Exp $
+/* $Id: Parser.xs,v 2.129 2004/11/29 11:02:41 gisle Exp $
  *
  * Copyright 1999-2004, Gisle Aas.
  * Copyright 1999-2000, Michael A. Chase.
@@ -340,7 +340,11 @@ strict_comment(pstate,...)
 	case  7: attr = &pstate->case_sensitive;       break;
 	case  8: attr = &pstate->strict_end;           break;
 	case  9: attr = &pstate->closing_plaintext;    break;
+#ifdef UNICODE_HTML_PARSER
         case 10: attr = &pstate->utf8_mode;            break;
+#else
+	case 10: croak("The utf8_mode does not work with this perl; perl-5.8 or better required");
+#endif
 	default:
 	    croak("Unknown boolean attribute (%d)", ix);
         }
@@ -506,6 +510,23 @@ _decode_entities(string, entities, ...)
 	if (SvREADONLY(string))
 	    croak("Can't inline decode readonly string");
 	decode_entities(aTHX_ string, entities_hv, allow_unterminated);
+
+bool
+_probably_utf8_chunk(string)
+    SV* string
+    PREINIT:
+        STRLEN len;
+        char *s;
+    CODE:
+#ifdef UNICODE_HTML_PARSER
+        sv_utf8_downgrade(string, 0);
+	s = SvPV(string, len);
+        RETVAL = probably_utf8_chunk(aTHX_ s, len);
+#else
+	croak("_probably_utf8_chunk() only works for Unicode enabled perls");
+#endif
+    OUTPUT:
+        RETVAL
 
 int
 UNICODE_SUPPORT()

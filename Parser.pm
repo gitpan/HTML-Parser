@@ -9,7 +9,7 @@ package HTML::Parser;
 use strict;
 use vars qw($VERSION @ISA);
 
-$VERSION = '3.3992';  # $Date: 2004/11/23 22:20:35 $
+$VERSION = '3.40';  # $Date: 2004/11/29 11:10:52 $
 
 require HTML::Entities;
 
@@ -454,6 +454,8 @@ encoded.  The character can also be represented by the entity
 then C<dtext> will be reported as "\xE2\x99\xA5\x{2665}" without
 C<utf8_mode> enabled, but as "\xE2\x99\xA5\xE2\x99\xA5" when enabled.
 The later string is what you want.
+
+This option is only available with perl-5.8 or better.
 
 =item $p->xml_mode
 
@@ -1151,12 +1153,11 @@ are allowed in argspecs.
 
 =item Parsing of undecoded UTF-8 will give garbage when decoding entities
 
-(W) The first 3 bytes of the document is "\xEF\xBB\xBF" and one or
-more argspecs that decode entities are used for the callback handlers.
-The sequence "\xEF\xBB\xBF" is the UTF-8 encoded Unicode BOM
-character.
+(W) The first chunk parsed appears to contain undecoded UTF-8 and one
+or more argspecs that decode entities are used for the callback
+handlers.
 
-The result of parsing will be a mix of encoded and decoded characters
+The result of decoding will be a mix of encoded and decoded characters
 for any entities that expand to characters with code above 127.  This
 is not a good thing.
 
@@ -1164,8 +1165,8 @@ The solution is to use the Encode::encode_utf8() on the data before
 feeding it to the $p->parse().  For $p->parse_file() pass a file that
 has been opened in ":utf8" mode.
 
-The parser can process raw undecoded UTF-8 sanely if enable the
-C<utf8_mode> or avoid using the "attr", "@attr" or "dtext" argspecs.
+The parser can process raw undecoded UTF-8 sanely if the C<utf8_mode>
+is enabled or if the "attr", "@attr" or "dtext" argspecs is avoided.
 
 =item Parsing string decoded with wrong endianess
 
@@ -1192,7 +1193,7 @@ L<HTML::LinkExtor>, L<HTML::Form>
 
 L<HTML::TreeBuilder> (part of the I<HTML-Tree> distribution)
 
-http://www.w3.org/TR/REC-html40
+http://www.w3.org/TR/html4
 
 More information about marked sections and processing instructions may
 be found at C<http://www.sgml.u-net.com/book/sgml-8.htm>.
