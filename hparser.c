@@ -1,4 +1,4 @@
-/* $Id: hparser.c,v 2.116 2004/11/29 13:35:58 gisle Exp $
+/* $Id: hparser.c,v 2.118 2004/12/02 11:52:32 gisle Exp $
  *
  * Copyright 1999-2004, Gisle Aas
  * Copyright 1999-2000, Michael A. Chase
@@ -126,7 +126,7 @@ report_event(PSTATE* p_state,
     char *s;
 
 #ifdef UNICODE_HTML_PARSER
-    #define CHR_DIST(a,b) (utf8 ? utf8_distance((a),(b)) : (a) - (b))
+    #define CHR_DIST(a,b) (utf8 ? utf8_distance((U8*)(a),(U8*)(b)) : (a) - (b))
 #else
     #define CHR_DIST(a,b) ((a) - (b))
 #endif
@@ -300,8 +300,10 @@ report_event(PSTATE* p_state,
 	    sv_catpvn(p_state->pend_text, beg, end - beg);
 	}
 	else {
-	    SV *tmp = NULL;
-	    sv_catpvn_utf8_upgrade(p_state->pend_text, beg, end - beg, tmp);
+	    SV *tmp = newSVpvn(beg, end - beg);
+	    sv_utf8_upgrade(tmp);
+	    sv_catsv(p_state->pend_text, tmp);
+	    SvREFCNT_dec(tmp);
 	}
 #else
 	sv_catpvn(p_state->pend_text, beg, end - beg);
@@ -639,8 +641,10 @@ IGNORE_EVENT:
 #ifdef UNICODE_HTML_PARSER
 	}
 	else {
-	    SV *tmp = NULL;
-	    sv_catpvn_utf8_upgrade(p_state->skipped_text, beg, end - beg, tmp);
+	    SV *tmp = newSVpvn(beg, end - beg);
+	    sv_utf8_upgrade(tmp);
+	    sv_catsv(p_state->pend_text, tmp);
+	    SvREFCNT_dec(tmp);
 	}
 #endif
     }
