@@ -11,6 +11,11 @@
 /*
  * Standard XS greeting.
  */
+#include <ConditionalMacros.h>
+#if PRAGMA_IMPORT
+#pragma import on
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -22,6 +27,9 @@ extern "C" {
 }
 #endif
 
+#if PRAGMA_IMPORT
+#pragma import off
+#endif
 
 
 /*
