@@ -1,10 +1,10 @@
 package HTML::TokeParser;
 
-# $Id: TokeParser.pm,v 2.5 1999/06/09 10:20:02 gisle Exp $
+# $Id: TokeParser.pm,v 2.7 1999/10/29 12:18:50 gisle Exp $
 
 require HTML::Parser;
 @ISA=qw(HTML::Parser);
-$VERSION = sprintf("%d.%02d", q$Revision: 2.5 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 2.7 $ =~ /(\d+)\.(\d+)/);
 
 use strict;
 use Carp qw(croak);
@@ -24,10 +24,10 @@ sub new
     $self->{tokens} = [];
     $self->{textify} = {img => "alt", applet => "alt"};
     if (ref($file) eq "SCALAR") {
-	$self->parse($$file);
-	$self->eof;
+	$self->{toke_scalar} = $file;
+	$self->{toke_scalarpos}  = 0;
     } else {
-	$self->{file} = $file;
+	$self->{toke_file} = $file;
     }
     $self;
 }
@@ -43,14 +43,36 @@ for (qw(declaration start end text comment)) {
 sub get_token
 {
     my $self = shift;
-    while (!@{$self->{tokens}} && $self->{file}) {
-	# must try to parse more of the file
-	my $buf;
-	if (read($self->{file}, $buf, 512)) {
-	    $self->parse($buf);
-	} else {
-	    $self->eof;
-	    delete $self->{file};
+    while (!@{$self->{tokens}} && !$self->{toke_eof}) {
+	if (my $f = $self->{toke_file}) {
+	    # must try to parse more from the file
+	    my $buf;
+	    if (read($f, $buf, 512)) {
+		$self->parse($buf);
+	    } else {
+		$self->eof;
+		$self->{toke_eof}++;
+		delete $self->{toke_file};
+	    }
+	}
+	elsif (my $sref = $self->{toke_scalar}) {
+	    # must try to parse more from the scalar
+	    my $pos = $self->{toke_scalarpos};
+	    my $chunk = substr($$sref, $pos, 512);
+	    $self->parse($chunk);
+	    $pos += length($chunk);
+	    if ($pos < length($$sref)) {
+		$self->{toke_scalarpos} = $pos;
+	    }
+	    else {
+		$self->eof;
+		$self->{toke_eof}++;
+		delete $self->{toke_scalar};
+		delete $self->{toke_scalarpos};
+	    }
+	}
+	else {
+	    die;
 	}
     }
     shift @{$self->{tokens}};
@@ -171,7 +193,8 @@ reading, then the constructor will return an undefined value and $!
 will tell you why it failed.
 
 If the argument is a reference to a plain scalar, then this scalar is
-taken to be the document to parse.
+taken to be the literal document to parse.  Changing the value of this
+scalar before all tokens have been extracted is not allowed.
 
 Otherwise the argument is taken to be some object that the
 C<HTML::TokeParser> can read() from when it need more data.  Typically
