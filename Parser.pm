@@ -1,6 +1,6 @@
 package HTML::Parser;
 
-# Copyright 1996-2001, Gisle Aas.
+# Copyright 1996-2003, Gisle Aas.
 # Copyright 1999-2000, Michael A. Chase.
 #
 # This library is free software; you can redistribute it and/or
@@ -9,7 +9,7 @@ package HTML::Parser;
 use strict;
 use vars qw($VERSION @ISA);
 
-$VERSION = '3.26';  # $Date: 2002/03/17 20:07:57 $
+$VERSION = '3.27';  # $Date: 2003/01/18 13:03:36 $
 
 require HTML::Entities;
 
@@ -433,7 +433,7 @@ By default, the C<attr> and C<@attr> argspecs will have general
 entities for attribute values decoded.  Enabling this attribute leaves
 entities alone.
 
-=item $p->case_sensititve( [$bool] )
+=item $p->case_sensitive( [$bool] )
 
 By default, tagnames and attribute names are down-cased.  Enabling this
 attribute leave them as found in the HTML source document.
@@ -929,7 +929,7 @@ An alternative implementation is:
                     comment_h      => [""],
                    )->parse_file(shift || die) || die $!;
 
-This will in most cases be much more efficient since only a sigle
+This will in most cases be much more efficient since only a single
 callback will be made.
 
 The next example prints out the text that is inside the <title>
@@ -1093,7 +1093,7 @@ be found at C<http://www.sgml.u-net.com/book/sgml-8.htm>.
 
 =head1 COPYRIGHT
 
- Copyright 1996-2002 Gisle Aas. All rights reserved.
+ Copyright 1996-2003 Gisle Aas. All rights reserved.
  Copyright 1999-2000 Michael A. Chase.  All rights reserved.
 
 This library is free software; you can redistribute it and/or
