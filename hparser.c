@@ -1,4 +1,4 @@
-/* $Id: hparser.c,v 2.95 2004/04/01 11:56:37 gisle Exp $
+/* $Id: hparser.c,v 2.97 2004/11/08 14:33:01 gisle Exp $
  *
  * Copyright 1999-2002, Gisle Aas
  * Copyright 1999-2000, Michael A. Chase
@@ -321,7 +321,7 @@ report_event(PSTATE* p_state,
 	case ARG_TOKENS:
 	    if (num_tokens >= 1) {
 		AV* av = newAV();
-		SV* prev_token;
+		SV* prev_token = &PL_sv_undef;
 		int i;
 		av_extend(av, num_tokens);
 		for (i = 0; i < num_tokens; i++) {
@@ -384,8 +384,13 @@ report_event(PSTATE* p_state,
 		    hv = newHV();
 		    arg = sv_2mortal(newRV_noinc((SV*)hv));
 		}
-		else
+		else {
+#ifdef __GNUC__
+		    /* gcc -Wall reports this variable as possibly used uninitialized */
+		    hv = 0;
+#endif
 		    push_arg = 0;  /* deal with argument pushing here */
+		}
 
 		for (i = 1; i < num_tokens; i += 2) {
 		    SV* attrname = newSVpvn(tokens[i].beg,
@@ -601,7 +606,6 @@ argspec_compile(SV* src, PSTATE* p_state)
 	if (isHNAME_FIRST(*s) || *s == '@') {
 	    char *name = s;
 	    int a = ARG_SELF;
-	    char temp;
 	    char **arg_name;
 
 	    s++;
@@ -609,10 +613,9 @@ argspec_compile(SV* src, PSTATE* p_state)
 		s++;
 
 	    /* check identifier */
-	    temp = *s;
-	    *s = '\0';
 	    for ( arg_name = argname; a < ARG_LITERAL ; ++a, ++arg_name ) {
-		if (strEQ(*arg_name, name))
+		if (strnEQ(*arg_name, name, s - name) &&
+		    (*arg_name)[s - name] == '\0')
 		    break;
 	    }
 	    if (a < ARG_LITERAL) {
@@ -630,9 +633,8 @@ argspec_compile(SV* src, PSTATE* p_state)
                 }
 	    }
 	    else {
-		croak("Unrecognized identifier %s in argspec", name);
+		croak("Unrecognized identifier %.*s in argspec", s - name, name);
 	    }
-	    *s = temp;
 	}
 	else if (*s == '"' || *s == '\'') {
 	    char *string_beg = s;

@@ -14,7 +14,7 @@ unless (&HTML::Entities::UNICODE_SUPPORT) {
     exit;
 }
 
-print "1..10\n";
+print "1..14\n";
 
 print "not " unless decode_entities("&euro") eq "\x{20AC}";
 print "ok 1\n";
@@ -25,17 +25,22 @@ print "ok 2\n";
 print "not " unless decode_entities("&#500000") eq chr(500000);
 print "ok 3\n";
 
-{
-   no warnings 'utf8';  # These are illegal unicode chars
-   print "not " unless decode_entities("&#xFFFF") eq "\x{FFFF}";
-   print "ok 4\n";
+print "not " unless decode_entities("&#x10FFFD") eq "\x{10FFFD}";
+print "ok 4\n";
 
-   print "not " unless decode_entities("&#x10FFFF") eq chr(0x10FFFF);
-   print "ok 5\n";
+print "not " unless decode_entities("&#xFFFC") eq "\x{FFFC}";
+print "ok 5\n";
 
-   print "not " unless decode_entities("&#XFFFFFFFF") eq chr(0xFFFF_FFFF);
-   print "ok 6\n";
-}
+
+print "not " unless decode_entities("&#xFDD0") eq "\x{FFFD}" &&
+                    decode_entities("&#xFDD1") eq "\x{FFFD}" &&
+                    decode_entities("&#xFDE0") eq "\x{FFFD}" &&
+                    decode_entities("&#xFDEF") eq "\x{FFFD}" &&
+                    decode_entities("&#xFFFF") eq "\x{FFFD}" &&
+                    decode_entities("&#x10FFFF") eq "\x{FFFD}" &&
+                    decode_entities("&#x110000") eq chr(0xFFFD) &&
+                    decode_entities("&#XFFFFFFFF") eq chr(0xFFFD);
+print "ok 6\n";
 
 print "not " unless decode_entities("&#0") eq "\0" &&
                     decode_entities("&#0;") eq "\0" &&
@@ -77,3 +82,14 @@ print "not " if $err;
 print "ok 10\n";
 
 
+print "not " unless decode_entities("&#56256;&#56453;") eq chr(0x100085);
+print "ok 11\n";
+
+print "not " unless decode_entities("&#56256;&#56453;") eq chr(0x100085);
+print "ok 12\n";
+
+print "not " unless decode_entities("&#56256") eq chr(0xFFFD);
+print "ok 13\n";
+
+print "not " unless decode_entities("\260&rsquo;\260") eq "\x{b0}\x{2019}\x{b0}";
+print "ok 14\n";
