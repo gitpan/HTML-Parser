@@ -1,6 +1,6 @@
-/* $Id: Parser.xs,v 2.122 2004/11/11 10:12:51 gisle Exp $
+/* $Id: Parser.xs,v 2.124 2004/11/17 12:35:36 gisle Exp $
  *
- * Copyright 1999-2001, Gisle Aas.
+ * Copyright 1999-2004, Gisle Aas.
  * Copyright 1999-2000, Michael A. Chase.
  *
  * This library is free software; you can redistribute it and/or
@@ -78,6 +78,19 @@ newSVpvn(char *s, STRLEN len)
    #define RETHROW	   croak(Nullch)
 #else
    #define RETHROW    { STRLEN my_na; croak("%s", SvPV(ERRSV, my_na)); }
+#endif
+
+#if PATCHLEVEL < 8
+   /* No useable Unicode support */
+   /* Make these harmless if present */
+   #undef SvUTF8
+   #undef SvUTF8_on
+   #undef SvUTF8_off
+   #define SvUTF8(sv)      0
+   #define SvUTF8_on(sv)   0
+   #define SvUTF8_off(sv)  0
+#else
+   #define UNICODE_HTML_PARSER
 #endif
 
 /*
@@ -489,7 +502,7 @@ int
 UNICODE_SUPPORT()
     PROTOTYPE:
     CODE:
-#ifdef UNICODE_ENTITIES
+#ifdef UNICODE_HTML_PARSER
        RETVAL = 1;
 #else
        RETVAL = 0;
