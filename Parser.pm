@@ -4,7 +4,7 @@ use strict;
 use HTML::Entities ();
 
 use vars qw($VERSION);
-$VERSION = "2.24";  # $Date: 1999/10/29 13:43:13 $
+$VERSION = "2.25";  # $Date: 1999/11/05 09:34:53 $
 
 
 sub new
@@ -156,7 +156,11 @@ sub parse
                 # Arrgh!! Since stupid Netscape violates RCF1866 by
                 # using "_" in attribute names (like "ADD_DATE") of
                 # their bookmarks.html, we allow this too.
-		while ($$buf =~ s|^(([a-zA-Z][a-zA-Z0-9\.\-_]*)\s*)||) {
+		#
+		# Double arrgh!!  Microsoft Excel 2000 don't want to
+		# be any worse, so it has started to use ":" as well.
+		# <div id="..." align=center x:publishsource="Excel">
+		while ($$buf =~ s|^(([a-zA-Z][a-zA-Z0-9\.\-_:]*)\s*)||) {
 		    $eaten .= $1;
 		    my $attr = lc $2;
 		    my $val;
@@ -232,6 +236,7 @@ sub parse_file
     my $chunk = '';
     while(read($file, $chunk, 512)) {
 	$self->parse($chunk);
+	last if delete $self->{parse_file_stop};
     }
     close($file) if $opened;
     $self->eof;
@@ -250,6 +255,9 @@ sub strict_comment
 sub netscape_buggy_comment  # legacy
 {
     my $self = shift;
+    if ($^W) {
+	warn "netscape_buggy_comment() is depreciated.  Please use the strict_comment() method instead";
+    }
     my $old = !$self->strict_comment;
     $self->strict_comment(!shift) if @_;
     return $old;
