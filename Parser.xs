@@ -1,4 +1,4 @@
-/* $Id: Parser.xs,v 2.82 1999/12/17 14:11:40 gisle Exp $
+/* $Id: Parser.xs,v 2.84 1999/12/21 09:43:48 gisle Exp $
  *
  * Copyright 1999, Gisle Aas.
  * Copyright 1999, Michael A. Chase.
@@ -111,8 +111,12 @@ get_pstate_hv(SV* sv)                               /* used by XS typemap */
     croak("Not a reference to a hash");
   hv = (HV*)sv;
   svp = hv_fetch(hv, "_hparser_xs_state", 17, 0);
-  if (svp)
-    return get_pstate_iv(*svp);
+  if (svp) {
+    if (SvROK(*svp))
+      return get_pstate_iv(SvRV(*svp));
+    else
+      croak("_hparser_xs_state element is not a reference");
+  }
   croak("Can't find '_hparser_xs_state' element in HTML::Parser hash");
   return 0;
 }
@@ -168,7 +172,7 @@ _alloc_pstate(self)
     CODE:
 	sv = SvRV(self);
         if (!sv || SvTYPE(sv) != SVt_PVHV)
-            croak("Self is not a reference to a hash");
+            croak("Not a reference to a hash");
 	hv = (HV*)sv;
 
 	Newz(56, pstate, 1, PSTATE);
@@ -181,7 +185,7 @@ _alloc_pstate(self)
         mg->mg_virtual = &vtbl_free_pstate;
 	SvREADONLY_on(sv);
 
-	hv_store(hv, "_hparser_xs_state", 17, sv, 0);
+	hv_store(hv, "_hparser_xs_state", 17, newRV_noinc(sv), 0);
 
 SV*
 parse(self, chunk)
