@@ -9,7 +9,7 @@ package HTML::Parser;
 use strict;
 use vars qw($VERSION @ISA);
 
-$VERSION = '3.1993';  # $Date: 2001/03/27 19:36:33 $
+$VERSION = '3.1994';  # $Date: 2001/03/30 08:15:18 $
 
 require HTML::Entities;
 
@@ -592,6 +592,12 @@ even if that is a bit strange.
 In fact, in the current implementation tagname is
 identical to C<token0> except that the name may be forced to lower case.
 
+=item C<tag>
+
+Same as C<tagname>, but prefixed with "/" if it belongs to an C<end>
+event and "!" for a declaration.  The C<tag> does not have any prefix
+for C<start> events, and is in this case identical to C<tagname>.
+
 =item C<attr>
 
 Attr causes a reference to a hash of attribute name/value pairs to be
@@ -684,11 +690,14 @@ C<comment>, C<process> or C<default>.
 
 =item C<line>
 
-I<Note: This is not supported yet!>
-
 Line causes the line number of the start of the event to be passed.
 The first line in the document is 1.  Line counting doesn't start
 until at least one handler requests this value.
+
+=item C<column>
+
+Column causes the column number of the start of the event to be passed.
+The first column on a line is 0.
 
 =item C<'...'>
 
