@@ -9,7 +9,7 @@ package HTML::Parser;
 use strict;
 use vars qw($VERSION @ISA);
 
-$VERSION = '3.08';  # $Date: 2000/05/23 10:56:40 $
+$VERSION = '3.09';  # $Date: 2000/06/28 08:32:30 $
 
 require HTML::Entities;
 
@@ -279,6 +279,8 @@ to the C<HTML::Parser> object:
 
 Parse $string as the next chunk of the HTML document.  The return
 value is normally a reference to the parser object (i.e. $p).
+Handlers invoked should not attempt modify the $string in-place until
+$p->parse returns.
 
 If an invoked event handler aborts parsing by calling $p->eof, then
 $p->parse() will return a FALSE value.
@@ -545,6 +547,9 @@ passed.  This should always be the same as $tokens->[0].
 For C<declaration> events, this is the declaration type.
 
 For C<start> and C<end> events, this is the tag name.
+
+For C<process> and non-strict C<comment> events, this is everything
+inside the tag.
 
 This passes undef if there are no tokens in the event.
 
