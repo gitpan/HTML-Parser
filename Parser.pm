@@ -1,12 +1,12 @@
 package HTML::Parser;
 
-# $Id: Parser.pm,v 2.14 1998/03/26 21:18:39 aas Exp $
+# $Id: Parser.pm,v 2.16 1998/04/02 11:08:22 aas Exp $
 
 use strict;
 use HTML::Entities ();
 
 use vars qw($VERSION);
-$VERSION = sprintf("%d.%02d", q$Revision: 2.14 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 2.16 $ =~ /(\d+)\.(\d+)/);
 
 
 sub new
@@ -68,8 +68,9 @@ sub parse
 		# but leave it for parsing on the next round.
 		if ($text =~ s|(\s+)$||) {
 		    $$buf = $1;
-                # Same treatment for chopped up entites.
-		} elsif ($text =~ s/(&(?:(?:\#\d*)?|\w*))$//) {
+                # Same treatment for chopped up entites.  We must wait
+		# until we have it all.
+		} elsif ($text =~ s/(&[\#\w]*)$//) {
 		    $$buf = $1;
 		};
 		$self->text($text) if length $text;
@@ -313,10 +314,10 @@ HTML::Parser - SGML parser class
 =head1 DESCRIPTION
 
 The C<HTML::Parser> will tokenize an HTML document when the parse()
-method is called and invoke various callback methods.  The document to
+method is called by invoking various callback methods.  The document to
 be parsed can be supplied in arbitrary chunks.
 
-The external interface the an HTML::Parser is:
+The external interface the an I<HTML::Parser> is:
 
 =over 4
 
@@ -421,7 +422,10 @@ times slower with a chunck size of 20K).
 
 =head1 SEE ALSO
 
-L<HTML::TreeBuilder>, L<HTML::HeadParser>, L<HTML::Entities>
+L<HTML::Entities>, L<HTML::Filter>, L<HTML::HeadParser>,
+L<HTML::LinkExtor>
+
+L<HTML::TreeBuilder> (part of the I<HTML-Tree> distribution)
 
 =head1 COPYRIGHT
 
