@@ -1,4 +1,4 @@
-/* $Id: hparser.c,v 2.59 2001/03/19 04:49:42 gisle Exp $
+/* $Id: hparser.c,v 2.61 2001/03/27 16:42:10 gisle Exp $
  *
  * Copyright 1999-2001, Gisle Aas
  * Copyright 1999-2000, Michael A. Chase
@@ -165,7 +165,7 @@ report_event(PSTATE* p_state,
     }
 
     /* tag filters */
-    if (p_state->ignore_tags || p_state->report_only_tags || p_state->ignore_elements) {
+    if (p_state->ignore_tags || p_state->report_tags || p_state->ignore_elements) {
 
 	if (event == E_START || event == E_END) {
 	    SV* tagname;
@@ -205,8 +205,8 @@ report_event(PSTATE* p_state,
 		SvREFCNT_dec(tagname);
 		return;
 	    }
-	    if (p_state->report_only_tags &&
-		!hv_fetch_ent(p_state->report_only_tags, tagname, 0, hash))
+	    if (p_state->report_tags &&
+		!hv_fetch_ent(p_state->report_tags, tagname, 0, hash))
 	    {
 		SvREFCNT_dec(tagname);
 		return;
@@ -509,7 +509,8 @@ argspec_compile(SV* src)
 	while (isHSPACE(*tmp))
 	    tmp++;
 	if (*tmp == '{') {
-	    sv_catpvf(argspec, "%c", ARG_FLAG_FLAT_ARRAY);
+	    char c = ARG_FLAG_FLAT_ARRAY;
+	    sv_catpvn(argspec, &c, 1);
 	    tmp++;
 	    while (isHSPACE(*tmp))
 		tmp++;
@@ -535,7 +536,8 @@ argspec_compile(SV* src)
 		    break;
 	    }
 	    if (a < ARG_LITERAL) {
-		sv_catpvf(argspec, "%c", (unsigned char) a);
+		char c = (unsigned char) a;
+		sv_catpvn(argspec, &c, 1);
 	    }
 	    else {
 		croak("Unrecognized identifier %s in argspec", name);
@@ -550,9 +552,12 @@ argspec_compile(SV* src)
 	    if (*s == *string_beg) {
 		/* literal */
 		int len = s - string_beg - 1;
+		unsigned char buf[2];
 		if (len > 255)
 		    croak("Literal string is longer than 255 chars in argspec");
-		sv_catpvf(argspec, "%c%c", ARG_LITERAL, len);
+		buf[0] = ARG_LITERAL;
+		buf[1] = len;
+		sv_catpvn(argspec, buf, 2);
 		sv_catpvn(argspec, string_beg+1, len);
 		s++;
 	    }
