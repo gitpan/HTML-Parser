@@ -18,6 +18,7 @@ lib/HTML/Entities.pm	Encode and decode entities in strings
 lib/HTML/Filter.pm	HTML::Filter class
 lib/HTML/HeadParser.pm  HTML::HeadParser class
 lib/HTML/LinkExtor.pm   HTML::LinkExtor class
+lib/HTML/PullParser.pm  HTML::PullParser class
 lib/HTML/TokeParser.pm	HTML::TokeParser class
 mkhctype		Generates 'hctype.h'
 mkpfunc			Generates 'pfunc.h'
@@ -51,6 +52,7 @@ t/offset.t		Test attrspec offset
 t/options.t             Test set/get for various parser options
 t/parser.t		Test HTML::Parser subclassing
 t/parsefile.t		Test the $p->parse_file() method
+t/pullparser.t		Test HTML::PullParser
 t/process.t		Test process instruction support
 t/tokeparser.t		Test HTML::TokeParser
 t/uentities.t           Test encoding/decoding of Unicode entities

@@ -1,102 +1,43 @@
 package HTML::TokeParser;
 
-# $Id: TokeParser.pm,v 2.20 2000/12/04 18:12:49 gisle Exp $
+# $Id: TokeParser.pm,v 2.24 2001/03/26 07:32:17 gisle Exp $
 
-require HTML::Parser;
-@ISA=qw(HTML::Parser);
-$VERSION = sprintf("%d.%02d", q$Revision: 2.20 $ =~ /(\d+)\.(\d+)/);
+require HTML::PullParser;
+@ISA=qw(HTML::PullParser);
+$VERSION = sprintf("%d.%02d", q$Revision: 2.24 $ =~ /(\d+)\.(\d+)/);
 
 use strict;
 use Carp ();
 use HTML::Entities qw(decode_entities);
 
+my %ARGS =
+(
+ start       => "'S',tagname,attr,attrseq,text",
+ end         => "'E',tagname,text",
+ text        => "'T',text,is_cdata",
+ process     => "'PI',token0,text",
+ comment     => "'C',text",
+ declaration => "'D',text",
+);
+
 
 sub new
 {
     my $class = shift;
-    my $file = shift;
-    Carp::croak("Usage: $class->new(\$file)")
-	  unless defined $file;
-
-    if (!ref($file) && ref(\$file) ne "GLOB") {
-	require IO::File;
-	$file = IO::File->new($file, "r") || return;
-    }
-    my $self = $class->SUPER::new(api_version => 3);
-    my $accum = $self->{accum} = [];
-    $self->handler(start =>   $accum, "'S',tagname,attr,attrseq,text");
-    $self->handler(end =>     $accum, "'E',tagname,text");
-    $self->handler(text =>    $accum, "'T',text,is_cdata");
-    $self->handler(process => $accum, "'PI',token0,text");
-
-    # XXX The following two are not strictly V2 compatible.  We used
-    # to return something that did not contain the "<!(--)?" and
-    # "(--)?>" markers.
-    $self->handler(comment => $accum, "'C',text");
-    $self->handler(declaration => $accum, "'D',text");
-
-    $self->{textify} = {img => "alt", applet => "alt"};
-    if (ref($file) eq "SCALAR") {
-	if (!defined $$file) {
-	    Carp::carp("HTML::TokeParser got undefined value as document")
-		if $^W;
-	    $self->{toke_eof}++;
-	}
-	else {
-	    $self->{toke_scalar} = $file;
-	    $self->{toke_scalarpos}  = 0;
-	}
+    my %cnf;
+    if (@_ == 1) {
+	my $type = (ref($_[0]) eq "SCALAR") ? "doc" : "file";
+	%cnf = ($type => $_[0]);
     }
     else {
-	$self->{toke_file} = $file;
+	%cnf = @_;
     }
-    $self;
-}
 
+    my $textify = delete $cnf{textify} || {img => "alt", applet => "alt"};
 
-sub get_token
-{
-    my $self = shift;
-    while (!@{$self->{accum}} && !$self->{toke_eof}) {
-	if (my $f = $self->{toke_file}) {
-	    # must try to parse more from the file
-	    my $buf;
-	    if (read($f, $buf, 512)) {
-		$self->parse($buf);
-	    } else {
-		$self->eof;
-		$self->{toke_eof}++;
-		delete $self->{toke_file};
-	    }
-	}
-	elsif (my $sref = $self->{toke_scalar}) {
-	    # must try to parse more from the scalar
-	    my $pos = $self->{toke_scalarpos};
-	    my $chunk = substr($$sref, $pos, 512);
-	    $self->parse($chunk);
-	    $pos += length($chunk);
-	    if ($pos < length($$sref)) {
-		$self->{toke_scalarpos} = $pos;
-	    }
-	    else {
-		$self->eof;
-		$self->{toke_eof}++;
-		delete $self->{toke_scalar};
-		delete $self->{toke_scalarpos};
-	    }
-	}
-	else {
-	    die;
-	}
-    }
-    shift @{$self->{accum}};
-}
+    my $self = $class->SUPER::new(%cnf, %ARGS) || return undef;
 
-
-sub unget_token
-{
-    my $self = shift;
-    unshift @{$self->{accum}}, @_;
+    $self->{textify} = $textify;
     $self;
 }
 
@@ -126,7 +67,9 @@ sub get_text
     while (my $token = $self->get_token) {
 	my $type = $token->[0];
 	if ($type eq "T") {
-	    push(@text, decode_entities($token->[1]));
+	    my $text = $token->[1];
+	    decode_entities($text) unless $token->[2];
+	    push(@text, $text);
 	} elsif ($type =~ /^[SE]$/) {
 	    my $tag = $token->[1];
 	    if ($type eq "S") {
@@ -182,14 +125,10 @@ HTML::TokeParser - Alternative HTML::Parser interface
 
 =head1 DESCRIPTION
 
-The HTML::TokeParser is an alternative interface to the HTML::Parser class.
-It basically turns the HTML::Parser inside out.  You associate a file
-(or any IO::Handle object or string) with the parser at construction time and
-then repeatedly call $parser->get_token to obtain the tags and text
-found in the parsed document.
+The C<HTML::TokeParser> is an alternative interface to the
+C<HTML::Parser> class.  It is an C<HTML::PullParser> subclass.
 
-Calling the methods defined by the HTML::Parser base class will be
-confusing, so don't do that.  Use the following methods instead:
+The following methods are available:
 
 =over 4
 
@@ -320,11 +259,11 @@ This example extract the <TITLE> from the document:
 
 =head1 SEE ALSO
 
-L<HTML::Parser>
+L<HTML::PullParser>, L<HTML::Parser>
 
 =head1 COPYRIGHT
 
-Copyright 1998-2000 Gisle Aas.
+Copyright 1998-2001 Gisle Aas.
 
 This library is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself.
