@@ -9,7 +9,7 @@ package HTML::Parser;
 use strict;
 use vars qw($VERSION @ISA);
 
-$VERSION = '3.19';  # $Date: 2001/03/10 04:25:57 $
+$VERSION = '3.1990';  # $Date: 2001/03/13 19:37:42 $
 
 require HTML::Entities;
 
@@ -475,6 +475,35 @@ If there is a default handler it will be invoked.
 
 =back
 
+Filters based on tags can be set up to limit the number of events
+reported.  The main bottleneck during parsing is often the huge number
+of callbacks made.  Applying filters can improve performance
+significantly.
+
+The following methods control filters:
+
+=over
+
+=item $p->ignore_tags( TAG, ... )
+
+Any C<start> and C<end> events involving any of the tags given are
+suppressed.
+
+=item $p->report_only_tags( TAG, ... )
+
+Any C<start> and C<end> events I<not> involving any of the tags given
+are suppressed.
+
+=item $p->ignore_elements( TAG, ... )
+
+Both the C<start> and the C<end> event as well as any events that
+would be reported in between are suppressed.  The ignored elements can
+contain nested occurences of itself.  Example:
+
+   $p->ignore_elements(qw(script style));
+
+=back
+
 =head2 Argspec
 
 Argspec is a string containing a comma separated list that describes
@@ -588,6 +617,20 @@ This passes undef except for C<start> events.
 Unless C<xml_mode> is enabled, the attribute names are forced to lower
 case.
 
+=item C<@attr>
+
+Basically same as C<attr>, but keys and values are passed as
+individual arguments and the original sequence of the attributes is
+kept.  The parameters passed will be the same as the @attr calculated
+here:
+
+   @attr = map { $_ => $attr->{$_} } @$attrseq;
+
+assuming $attr and $attrseq here are the hash and array passed as the
+result of C<attr> and C<attrseq> argspecs.
+
+This pass no values for events besides C<start>.
+
 =item C<text>
 
 Text causes the source text (including markup element delimiters) to be
@@ -654,6 +697,10 @@ in single (') or double (") quotes is passed as entered.
 Pass an undefined value.  Useful as padding.
 
 =back
+
+The whole argspec string can be wrapped up in C<'@{...}'> to signal
+that resulting event array should be flatten.  This only makes a
+difference if an array reference is used as the handler target.
 
 =head2 Events
 

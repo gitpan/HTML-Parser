@@ -1,4 +1,4 @@
-/* $Id: hparser.c,v 2.53 2001/03/10 04:25:57 gisle Exp $
+/* $Id: hparser.c,v 2.57 2001/03/13 19:22:14 gisle Exp $
  *
  * Copyright 1999-2001, Gisle Aas
  * Copyright 1999-2000, Michael A. Chase
@@ -36,6 +36,7 @@ enum argcode {
     ARG_TOKEN0,
     ARG_TAGNAME,
     ARG_ATTR,
+    ARG_ATTRARR,
     ARG_ATTRSEQ,
     ARG_TEXT,
     ARG_DTEXT,
@@ -44,7 +45,10 @@ enum argcode {
     ARG_LENGTH,
     ARG_EVENT,
     ARG_UNDEF,
-    ARG_LITERAL /* Always keep last */
+    ARG_LITERAL, /* Always keep last */
+
+    /* extra flags always encoded first */
+    ARG_FLAG_FLAT_ARRAY,
 };
 
 char *argname[] = {
@@ -55,6 +59,7 @@ char *argname[] = {
     "token0",   /* ARG_TOKEN0 */
     "tagname",  /* ARG_TAGNAME */
     "attr",     /* ARG_ATTR */
+    "@attr",    /* ARG_ATTRARR */
     "attrseq",  /* ARG_ATTRSEQ */
     "text",     /* ARG_TEXT */
     "dtext",    /* ARG_DTEXT */
@@ -64,6 +69,7 @@ char *argname[] = {
     "event",    /* ARG_EVENT */
     "undef",    /* ARG_UNDEF */
     /* ARG_LITERAL (not compared) */
+    /* ARG_FLAG_FLAT_ARRAY */
 };
 
 
@@ -158,6 +164,59 @@ report_event(PSTATE* p_state,
 	return;
     }
 
+    /* tag filters */
+    if (p_state->ignore_tags || p_state->report_only_tags || p_state->ignore_elements) {
+
+	if (event == E_START || event == E_END) {
+	    SV* tagname;
+	    U32 hash;
+
+	    assert(num_tokens >= 1);
+	    tagname = newSVpvn(tokens[0].beg, tokens[0].end - tokens[0].beg);
+	    if (!p_state->xml_mode)
+		sv_lower(aTHX_ tagname);
+
+	    if (p_state->ignoring_element) {
+		if (sv_eq(p_state->ignoring_element, tagname)) {
+		    if (event == E_START)
+			p_state->ignore_depth++;
+		    else if (--p_state->ignore_depth == 0) {
+			SvREFCNT_dec(p_state->ignoring_element);
+			p_state->ignoring_element = 0;
+		    }
+		}
+		SvREFCNT_dec(tagname);
+		return;
+	    }
+
+	    PERL_HASH(hash, SvPVX(tagname), SvCUR(tagname));
+
+	    if (p_state->ignore_elements &&
+		hv_fetch_ent(p_state->ignore_elements, tagname, 0, hash))
+	    {
+		p_state->ignoring_element = tagname;
+		p_state->ignore_depth = 1;
+		return;
+	    }
+
+	    if (p_state->ignore_tags &&
+		hv_fetch_ent(p_state->ignore_tags, tagname, 0, hash))
+	    {
+		SvREFCNT_dec(tagname);
+		return;
+	    }
+	    if (p_state->report_only_tags &&
+		!hv_fetch_ent(p_state->report_only_tags, tagname, 0, hash))
+	    {
+		SvREFCNT_dec(tagname);
+		return;
+	    }
+	}
+	else if (p_state->ignoring_element) {
+	    return;
+	}
+    }
+
     if (p_state->unbroken_text && event == E_TEXT) {
 	/* should buffer text */
 	if (!p_state->pend_text)
@@ -185,22 +244,33 @@ report_event(PSTATE* p_state,
 
     /* At this point we have decided to generate an event callback */
 
+    argspec = h->argspec ? SvPV(h->argspec, my_na) : "";
+
     if (SvTYPE(h->cb) == SVt_PVAV) {
-	/* start sub-array for accumulator array */
-	array = newAV();
+	
+	if (*argspec == ARG_FLAG_FLAT_ARRAY) {
+	    argspec++;
+	    array = (AV*)h->cb;
+	}
+	else {
+	    /* start sub-array for accumulator array */
+	    array = newAV();
+	}
     }
     else {
 	array = 0;
+	if (*argspec == ARG_FLAG_FLAT_ARRAY)
+	    argspec++;
+
 	/* start argument stack for callback */
 	ENTER;
 	SAVETMPS;
 	PUSHMARK(SP);
     }
 
-    argspec = h->argspec ? SvPV(h->argspec, my_na) : "";
-
     for (s = argspec; *s; s++) {
 	SV* arg = 0;
+	int push_arg = 1;
 	enum argcode argcode = (enum argcode)*s;
 
 	switch( argcode ) {
@@ -262,9 +332,15 @@ report_event(PSTATE* p_state,
 	    break;
 
 	case ARG_ATTR:
+	case ARG_ATTRARR:
 	    if (event == E_START) {
-		HV* hv = newHV();
+		HV* hv;
 		int i;
+		if (argcode == ARG_ATTR)
+		    hv = newHV();
+		else
+		    push_arg = 0;  /* deal with argument pushing here */
+
 		for (i = 1; i < num_tokens; i += 2) {
 		    SV* attrname = newSVpvn(tokens[i].beg,
 					    tokens[i].end-tokens[i].beg);
@@ -289,15 +365,32 @@ report_event(PSTATE* p_state,
 
 		    if (!p_state->xml_mode)
 			sv_lower(aTHX_ attrname);
-		    if (!hv_store_ent(hv, attrname, attrval, 0)) {
-			SvREFCNT_dec(attrval);
+
+		    if (argcode == ARG_ATTR) {
+			if (!hv_store_ent(hv, attrname, attrval, 0)) {
+			    SvREFCNT_dec(attrval);
+			}
+			SvREFCNT_dec(attrname);
 		    }
-		    SvREFCNT_dec(attrname);
+		    else { /* ARG_ATTRARR */
+			if (array) {
+			    av_push(array, attrname);
+			    av_push(array, attrval);
+			}
+			else {
+			    XPUSHs(sv_2mortal(attrname));
+			    XPUSHs(sv_2mortal(attrval));
+			}
+		    }
 		}
-		arg = sv_2mortal(newRV_noinc((SV*)hv));
+		if (argcode == ARG_ATTR)
+		    arg = sv_2mortal(newRV_noinc((SV*)hv));
+	    }
+	    else if (argcode == ARG_ATTRARR) {
+		push_arg = 0;
 	    }
 	    break;
-      
+
 	case ARG_ATTRSEQ:       /* (v2 compatibility stuff) */
 	    if (event == E_START) {
 		AV* av = newAV();
@@ -361,22 +454,25 @@ report_event(PSTATE* p_state,
 	    break;
 	}
 
-	if (!arg)
-	    arg = sv_mortalcopy(&PL_sv_undef);
+	if (push_arg) {
+	    if (!arg)
+		arg = sv_mortalcopy(&PL_sv_undef);
 
-	if (array) {
-	    /* have to fix mortality here or add mortality to
-             * XPUSHs after removing it from the switch cases.
-             */
-	    av_push(array, SvREFCNT_inc(arg));
-	}
-	else {
-	    XPUSHs(arg);
+	    if (array) {
+		/* have to fix mortality here or add mortality to
+		 * XPUSHs after removing it from the switch cases.
+		 */
+		av_push(array, SvREFCNT_inc(arg));
+	    }
+	    else {
+		XPUSHs(arg);
+	    }
 	}
     }
 
     if (array) {
-	av_push((AV*)h->cb, newRV_noinc((SV*)array));
+	if (array != (AV*)h->cb)
+	    av_push((AV*)h->cb, newRV_noinc((SV*)array));
     }
     else {
 	PUTBACK;
@@ -406,8 +502,22 @@ argspec_compile(SV* src)
 
     while (isHSPACE(*s))
 	s++;
+
+    if (*s == '@') {
+	/* try to deal with '@{ ... }' wrapping */
+	char *tmp = s + 1;
+	while (isHSPACE(*tmp))
+	    tmp++;
+	if (*tmp == '{') {
+	    sv_catpvf(argspec, "%c", ARG_FLAG_FLAT_ARRAY);
+	    tmp++;
+	    while (isHSPACE(*tmp))
+		tmp++;
+	    s = tmp;
+	}
+    }
     while (s < end) {
-	if (isHNAME_FIRST(*s)) {
+	if (isHNAME_FIRST(*s) || *s == '@') {
 	    char *name = s;
 	    int a = ARG_SELF;
 	    char temp;
@@ -459,6 +569,16 @@ argspec_compile(SV* src)
 
 	while (isHSPACE(*s))
 	    s++;
+	
+	if (*s == '}' && SvPVX(argspec)[0] == ARG_FLAG_FLAT_ARRAY) {
+	    /* end of '@{ ... }' */
+	    s++;
+	    while (isHSPACE(*s))
+		s++;
+	    if (s < end)
+		croak("Bad argspec: stuff after @{...} (%s)", s);
+	}
+
 	if (s == end)
 	    break;
 	if (*s != ',') {
