@@ -1,4 +1,4 @@
-/* $Id: hparser.h,v 2.20 2001/04/10 20:10:58 gisle Exp $
+/* $Id: hparser.h,v 2.22 2001/05/08 01:53:46 gisle Exp $
  *
  * Copyright 1999-2001, Gisle Aas
  * Copyright 1999-2000, Michael A. Chase
@@ -35,6 +35,8 @@ enum event_id {
     E_END,
     E_TEXT,
     E_PROCESS,
+    E_START_DOCUMENT,
+    E_END_DOCUMENT,
     E_DEFAULT,
     /**/
     EVENT_COUNT,
@@ -50,6 +52,8 @@ static char* event_id_str[] = {
     "end",
     "text",
     "process",
+    "start_document",
+    "end_document",
     "default",
 };
 
@@ -79,6 +83,9 @@ struct p_state {
     STRLEN pend_text_offset;
     STRLEN pend_text_line;
     STRLEN pend_text_column;
+
+    /* skipped text is accumulated here */
+    SV* skipped_text;
 
 #ifdef MARKED_SECTION
     /* marked section support */

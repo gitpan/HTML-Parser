@@ -29,6 +29,7 @@ t/api_version.t         Test api_version constructor option
 t/argspec.t		Test argspec
 t/argspec2.t		Test new argspecs @attr, @{...}
 t/argspec-bad.t         Test various bad argspec arguments
+t/callback.t		Use callback to get data
 t/cases.t		Test various interesting cases
 t/comment.t             Test comment parsing
 t/crashme.t             Parse random data
@@ -55,6 +56,7 @@ t/parser.t		Test HTML::Parser subclassing
 t/parsefile.t		Test the $p->parse_file() method
 t/pullparser.t		Test HTML::PullParser
 t/process.t		Test process instruction support
+t/skipped-text.t	Test skipped_text argspec
 t/textarea.t	        Test handling of <textarea>
 t/tokeparser.t		Test HTML::TokeParser
 t/uentities.t           Test encoding/decoding of Unicode entities
