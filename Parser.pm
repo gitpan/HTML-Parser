@@ -9,7 +9,7 @@ package HTML::Parser;
 use strict;
 use vars qw($VERSION @ISA);
 
-$VERSION = '3.25';  # $Date: 2001/05/11 17:24:09 $
+$VERSION = '3.26';  # $Date: 2002/03/17 20:07:57 $
 
 require HTML::Entities;
 
@@ -427,6 +427,17 @@ honoured.
 There are currently no events associated with the marked section
 markup, but the text can be returned as C<skipped_text>.
 
+=item $p->attr_encoded( [$bool] )
+
+By default, the C<attr> and C<@attr> argspecs will have general
+entities for attribute values decoded.  Enabling this attribute leaves
+entities alone.
+
+=item $p->case_sensititve( [$bool] )
+
+By default, tagnames and attribute names are down-cased.  Enabling this
+attribute leave them as found in the HTML source document.
+
 =back
 
 As markup and text is recognized, handlers are invoked.  The following
@@ -625,8 +636,9 @@ This is the element name (or I<generic identifier> in SGML jargon) for
 start and end tags.  Since HTML is case insensitive this name is
 forced to lower case to ease string matching.
 
-Since XML is case sensitive, the tagname case is not
-changed when C<xml_mode> is enabled.
+Since XML is case sensitive, the tagname case is not changed when
+C<xml_mode> is enabled.  Same happens if the C<case_sensitive> attribute
+is set.
 
 The declaration type of declaration elements is also passed as a tagname,
 even if that is a bit strange.
@@ -650,8 +662,8 @@ set by $p->boolean_attribute_value.
 
 This passes undef except for C<start> events.
 
-Unless C<xml_mode> is enabled, the attribute names are forced to
-lower case.
+Unless C<xml_mode> or C<case_sensitive> is enabled, the attribute
+names are forced to lower case.
 
 General entities are decoded in the attribute values and
 one layer of matching quotes enclosing the attribute values are removed.
@@ -664,8 +676,8 @@ the original sequence.
 
 This passes undef except for C<start> events.
 
-Unless C<xml_mode> is enabled, the attribute names are forced to lower
-case.
+Unless C<xml_mode> or C<case_sensitive> is enabled, the attribute
+names are forced to lower case.
 
 =item C<@attr>
 
@@ -1081,7 +1093,7 @@ be found at C<http://www.sgml.u-net.com/book/sgml-8.htm>.
 
 =head1 COPYRIGHT
 
- Copyright 1996-2001 Gisle Aas. All rights reserved.
+ Copyright 1996-2002 Gisle Aas. All rights reserved.
  Copyright 1999-2000 Michael A. Chase.  All rights reserved.
 
 This library is free software; you can redistribute it and/or

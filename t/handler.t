@@ -27,13 +27,13 @@ eval {
     $p->handler(foo => "foo", "foo");
 };
 
-print "not " unless $@ && $@ =~ /^# No handler for foo events/;
+print "not " unless $@ && $@ =~ /^No handler for foo events/;
 print "ok 1\n";
 
 eval {
    $p->handler(start => "foo", "foo");
 };
-print "not " unless $@ && $@ =~ /^# Unrecognized identifier foo in argspec/;
+print "not " unless $@ && $@ =~ /^Unrecognized identifier foo in argspec/;
 print "ok 2\n";
 
 my $h = $p->handler(start => "foo", "self,tagname");
@@ -56,7 +56,7 @@ $p->parse("<a>");
 eval {
     $p->handler(start => {}, "self");
 };
-print "not " unless $@ && $@ =~ /^# Only code or array references allowed as handler/;
+print "not " unless $@ && $@ =~ /^Only code or array references allowed as handler/;
 print "ok 8\n";
 
 $a = [];
