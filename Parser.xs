@@ -1,6 +1,6 @@
-/* $Id: Parser.xs,v 2.100 2001/03/10 04:25:57 gisle Exp $
+/* $Id: Parser.xs,v 2.104 2001/03/15 00:54:50 gisle Exp $
  *
- * Copyright 1999-2000, Gisle Aas.
+ * Copyright 1999-2001, Gisle Aas.
  * Copyright 1999-2000, Michael A. Chase.
  *
  * This library is free software; you can redistribute it and/or
@@ -11,11 +11,6 @@
 /*
  * Standard XS greeting.
  */
-#include <ConditionalMacros.h>
-#if PRAGMA_IMPORT
-#pragma import on
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -27,9 +22,6 @@ extern "C" {
 }
 #endif
 
-#if PRAGMA_IMPORT
-#pragma import off
-#endif
 
 
 /*
@@ -162,6 +154,12 @@ free_pstate(PSTATE* pstate)
 	SvREFCNT_dec(pstate->handlers[i].cb);
 	SvREFCNT_dec(pstate->handlers[i].argspec);
     }
+
+    SvREFCNT_dec(pstate->report_only_tags);
+    SvREFCNT_dec(pstate->ignore_tags);
+    SvREFCNT_dec(pstate->ignore_elements);
+    SvREFCNT_dec(pstate->ignoring_element);
+
     pstate->signature = 0;
     Safefree(pstate);
 }
@@ -290,6 +288,62 @@ boolean_attribute_value(pstate,...)
         }
     OUTPUT:
 	RETVAL
+
+void
+ignore_tags(pstate,...)
+	PSTATE* pstate
+    ALIAS:
+	HTML::Parser::report_only_tags = 1
+	HTML::Parser::ignore_tags = 2
+	HTML::Parser::ignore_elements = 3
+    PREINIT:
+	HV** attr;
+	int i;
+    CODE:
+	switch (ix) {
+	case  1: attr = &pstate->report_only_tags;  break;
+	case  2: attr = &pstate->ignore_tags;       break;
+	case  3: attr = &pstate->ignore_elements;   break;
+	default:
+	    croak("Unknown tag-list attribute (%d)", ix);
+	}
+	if (GIMME_V != G_VOID)
+	    croak("Can't report tag lists yet");
+
+	items--;  /* pstate */
+	if (items) {
+	    if (*attr)
+		hv_clear(*attr);
+	    else
+		*attr = newHV();
+
+	    for (i = 0; i < items; i++) {
+		SV* sv = ST(i+1);
+		if (SvROK(sv)) {
+		    sv = SvRV(sv);
+		    if (SvTYPE(sv) == SVt_PVAV) {
+			AV* av = (AV*)sv;
+			STRLEN j;
+			STRLEN len = av_len(av) + 1;
+			for (j = 0; j < len; j++) {
+			    SV**svp = av_fetch(av, j, 0);
+			    if (svp) {
+				hv_store_ent(*attr, *svp, newSViv(0), 0);
+			    }
+			}
+		    }
+		    else
+			croak("Tag list must be plain scalars and arrays");
+		}
+		else {
+		    hv_store_ent(*attr, sv, newSViv(0), 0);
+		}
+	    }
+	}
+	else if (*attr) {
+	    SvREFCNT_dec(*attr);
+            *attr = 0;	    
+	}
 
 SV*
 handler(pstate, eventname,...)

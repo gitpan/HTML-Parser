@@ -5,41 +5,28 @@
 use strict;
 use HTML::Parser ();
 
-my %ignore_attr = map {$_ => 1}
+# configure these values
+my @ignore_attr =
     qw(bgcolor background color face style link alink vlink text
        onblur onchange onclick ondblclick onfocus onkeydown onkeyup onload
        onmousedown onmousemove onmouseout onmouseover onmouseup
        onreset onselect onunload
       );
+my @ignore_tags = qw(font big small b i);
+my @ignore_elements = qw(script style);
 
-my %ignore_tag = map {$_ => 1}
-    qw(font big small b i);
-
-my %ignore_elem = map {$_ => 1}
-    qw(script style);
-
-my %inside_ignore;
+# make it easier to look up attributes
+my %ignore_attr = map { $_ => 1} @ignore_attr;
 
 sub tag
 {
-    my $tagname = shift;
-    return if $ignore_tag{$tagname};
-
-    my $deeper = shift;
-    if ($ignore_elem{$tagname}) {
-	delete $inside_ignore{$tagname}
-	    unless $inside_ignore{$tagname} += $deeper;
-	return;
-    }
-    return if %inside_ignore;
-
     my($pos, $text) = @_;
-    if (defined $pos && 4 <= @$pos) {
+    if (@$pos >= 4) {
 	# kill some attributes
 	my($k_offset, $k_len, $v_offset, $v_len) = @{$pos}[-4 .. -1];
 	my $next_attr = $v_offset ? $v_offset + $v_len : $k_offset + $k_len;
 	my $edited;
-	while (4 <= @$pos) {
+	while (@$pos >= 4) {
 	    ($k_offset, $k_len, $v_offset, $v_len) = splice @$pos, -4;
 	    if ($ignore_attr{lc substr($text, $k_offset, $k_len)}) {
 		substr($text, $k_offset, $next_attr - $k_offset) = "";
@@ -61,16 +48,18 @@ sub decl
 
 sub text
 {
-    print shift unless %inside_ignore;
+    print shift;
 }
 
 HTML::Parser->new(api_version   => 3,
-		  start_h       => [\&tag,   "tagname, '+1', tokenpos, text"],
-		  end_h         => [\&tag,   "tagname, '-1', undef,    text"],
+		  start_h       => [\&tag,   "tokenpos, text"],
                   process_h     => ["", ""],
 		  comment_h     => ["", ""],
                   declaration_h => [\&decl,   "tagname, text"],
                   default_h     => [\&text,   "text"],
+
+		  ignore_tags   => \@ignore_tags,
+		  ignore_elements => \@ignore_elements,
                  )
     ->parse_file(shift) || die "Can't open file: $!\n";
 

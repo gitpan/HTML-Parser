@@ -9,7 +9,7 @@ package HTML::Parser;
 use strict;
 use vars qw($VERSION @ISA);
 
-$VERSION = '3.19';  # $Date: 2001/03/10 04:25:57 $
+$VERSION = '3.1991';  # $Date: 2001/03/19 19:19:19 $
 
 require HTML::Entities;
 
@@ -111,11 +111,9 @@ sub parse_file
 sub netscape_buggy_comment  # legacy
 {
     my $self = shift;
-    if ($^W) {
-	require Carp;
-	Carp::carp("netscape_buggy_comment() is deprecated.  " .
-	    "Please use the strict_comment() method instead");
-    }
+    require Carp;
+    Carp::carp("netscape_buggy_comment() is deprecated.  " .
+	       "Please use the strict_comment() method instead");
     my $old = !$self->strict_comment;
     $self->strict_comment(!shift) if @_;
     return $old;
@@ -387,6 +385,11 @@ enabled, blocks of text are always reported in one piece.  This will
 delay the text event until the following (non-text) event has been
 recognized by the parser.
 
+Note that the C<offset> argspec will give you the offset of the first
+segment of text and C<length> is the combined length of the segments.
+Since there might be ignored tags in between, these numbers can't be
+used to directly index in the original document file.
+
 =item $p->marked_sections( [$bool] )
 
 By default, section markings like <![CDATA[...]]> are treated like
@@ -472,6 +475,35 @@ to $p->handler(start => sub {}), but is more efficient.
 
 This causes no handler to be assosiated with start events.
 If there is a default handler it will be invoked.
+
+=back
+
+Filters based on tags can be set up to limit the number of events
+reported.  The main bottleneck during parsing is often the huge number
+of callbacks made.  Applying filters can improve performance
+significantly.
+
+The following methods control filters:
+
+=over
+
+=item $p->ignore_tags( TAG, ... )
+
+Any C<start> and C<end> events involving any of the tags given are
+suppressed.
+
+=item $p->report_only_tags( TAG, ... )
+
+Any C<start> and C<end> events involving any of the tags I<not> given
+are suppressed.
+
+=item $p->ignore_elements( TAG, ... )
+
+Both the C<start> and the C<end> event as well as any events that
+would be reported in between are suppressed.  The ignored elements can
+contain nested occurences of itself.  Example:
+
+   $p->ignore_elements(qw(script style));
 
 =back
 
@@ -588,6 +620,20 @@ This passes undef except for C<start> events.
 Unless C<xml_mode> is enabled, the attribute names are forced to lower
 case.
 
+=item C<@attr>
+
+Basically same as C<attr>, but keys and values are passed as
+individual arguments and the original sequence of the attributes is
+kept.  The parameters passed will be the same as the @attr calculated
+here:
+
+   @attr = map { $_ => $attr->{$_} } @$attrseq;
+
+assuming $attr and $attrseq here are the hash and array passed as the
+result of C<attr> and C<attrseq> argspecs.
+
+This pass no values for events besides C<start>.
+
 =item C<text>
 
 Text causes the source text (including markup element delimiters) to be
@@ -654,6 +700,10 @@ in single (') or double (") quotes is passed as entered.
 Pass an undefined value.  Useful as padding.
 
 =back
+
+The whole argspec string can be wrapped up in C<'@{...}'> to signal
+that resulting event array should be flatten.  This only makes a
+difference if an array reference is used as the handler target.
 
 =head2 Events
 
