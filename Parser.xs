@@ -1,4 +1,4 @@
-/* $Id: Parser.xs,v 2.115 2003/08/15 00:39:11 gisle Exp $
+/* $Id: Parser.xs,v 2.118 2003/08/15 16:56:20 gisle Exp $
  *
  * Copyright 1999-2001, Gisle Aas.
  * Copyright 1999-2000, Michael A. Chase.
@@ -224,13 +224,13 @@ _alloc_pstate(self)
 
 	hv_store(hv, "_hparser_xs_state", 17, newRV_noinc(sv), 0);
 
-SV*
+void
 parse(self, chunk)
 	SV* self;
 	SV* chunk
     PREINIT:
 	PSTATE* p_state = get_pstate_hv(aTHX_ self);
-    CODE:
+    PPCODE:
 	if (p_state->parsing)
     	    croak("Parse loop not allowed");
         p_state->parsing = 1;
@@ -267,15 +267,18 @@ parse(self, chunk)
         p_state->parsing = 0;
 	if (p_state->eof) {
 	    p_state->eof = 0;
-            ST(0) = sv_newmortal();
+            PUSHs(sv_newmortal());
         }
+	else {
+	    PUSHs(self);
+	}
 
-SV*
+void
 eof(self)
 	SV* self;
     PREINIT:
 	PSTATE* p_state = get_pstate_hv(aTHX_ self);
-    CODE:
+    PPCODE:
         if (p_state->parsing)
             p_state->eof = 1;
         else {
@@ -283,6 +286,7 @@ eof(self)
 	    parse(aTHX_ p_state, 0, self); /* flush */
 	    p_state->parsing = 0;
 	}
+	PUSHs(self);
 
 SV*
 strict_comment(pstate,...)
@@ -391,7 +395,7 @@ ignore_tags(pstate,...)
             *attr = 0;
 	}
 
-SV*
+void
 handler(pstate, eventname,...)
 	PSTATE* pstate
 	SV* eventname
@@ -402,7 +406,7 @@ handler(pstate, eventname,...)
         int event = -1;
         int i;
         struct p_handler *h;
-    CODE:
+    PPCODE:
 	/* map event name string to event_id */
 	for (i = 0; i < EVENT_COUNT; i++) {
 	    if (strEQ(name, event_id_str[i])) {
@@ -417,12 +421,12 @@ handler(pstate, eventname,...)
 
 	/* set up return value */
 	if (h->cb) {
-	    ST(0) = (SvTYPE(h->cb) == SVt_PVAV)
+	    PUSHs((SvTYPE(h->cb) == SVt_PVAV)
 	                 ? sv_2mortal(newRV_inc(h->cb))
-	                 : sv_2mortal(newSVsv(h->cb));
+	                 : sv_2mortal(newSVsv(h->cb)));
 	}
         else {
-	    ST(0) = &PL_sv_undef;
+	    PUSHs(&PL_sv_undef);
         }
 
         /* update */
