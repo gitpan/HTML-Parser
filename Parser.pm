@@ -9,7 +9,7 @@ package HTML::Parser;
 use strict;
 use vars qw($VERSION @ISA);
 
-$VERSION = '3.10';  # $Date: 2000/06/29 07:45:19 $
+$VERSION = '3.11';  # $Date: 2000/08/22 10:01:18 $
 
 require HTML::Entities;
 
@@ -653,7 +653,7 @@ until at least one handler requests this value.
 
 =item C<'...'>
 
-A literal string of 0 to 255 chracters enclosed
+A literal string of 0 to 255 characters enclosed
 in single (') or double (") quotes is passed as entered.
 
 =item C<undef>
