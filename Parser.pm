@@ -9,7 +9,7 @@ package HTML::Parser;
 use strict;
 use vars qw($VERSION @ISA);
 
-$VERSION = '3.28';  # $Date: 2003/04/17 03:45:34 $
+$VERSION = '3.29';  # $Date: 2003/08/15 06:05:46 $
 
 require HTML::Entities;
 
@@ -352,13 +352,19 @@ Methods that can be used to get and/or set parser options are:
 =item $p->strict_comment( [$bool] )
 
 By default, comments are terminated by the first occurrence of "-->".
-This is the behaviour of most popular browsers (like Netscape and
+This is the behaviour of most popular browsers (like Mozilla, Opera and
 MSIE), but it is not correct according to the official HTML
 standard.  Officially, you need an even number of "--" tokens before
 the closing ">" is recognized and there may not be anything but
 whitespace between an even and an odd "--".
 
 The official behaviour is enabled by enabling this attribute.
+
+Enabling of 'strict_comment' also disables recognizing these forms as
+comments:
+
+  </ comment>
+  <! comment>
 
 =item $p->strict_names( [$bool] )
 
@@ -370,11 +376,19 @@ some broken tags with invalid attr values like:
 
 By default, "LIST]" is parsed as a boolean attribute, not as
 part of the ALT value as was clearly intended.  This is also what
-Netscape sees.
+Mozilla sees.
 
 The official behaviour is enabled by enabling this attribute.  If
 enabled, it will cause the tag above to be reported as text
 since "LIST]" is not a legal attribute name.
+
+=item $p->strict_end( [$bool] )
+
+By default attributes and other junk to be present on end tags in a
+manner that emulate MSIEs behaviour.
+
+The official behaviour is enabled with this attribute.  If enabled,
+only whitespace is allowed between the tagname and the final ">".
 
 =item $p->boolean_attribute_value( $val )
 
@@ -702,8 +716,8 @@ passed.
 
 Dtext causes the decoded text to be passed.  General entities are
 automatically decoded unless the event was inside a CDATA section or
-was between literal start and end tags (C<script>, C<style>, C<xmp>,
-and C<plaintext>).
+was between literal start and end tags (C<script>, C<style>, C<textarea>,
+C<xmp>, and C<plaintext>).
 
 The Unicode character set is assumed for entity decoding.  With perl
 version < 5.7.1 only the Latin1 range is supported, and entities for
@@ -715,7 +729,7 @@ This passes undef except for C<text> events.
 
 Is_cdata causes a TRUE value to be passed if the event is inside a CDATA
 section or is between literal start and end tags (C<script>,
-C<style>, C<xmp>, and C<plaintext>).
+C<style>, C<textarea>, C<xmp>, and C<plaintext>).
 
 When the flag is FALSE for a text event, then you should normally
 either use C<dtext> or decode the entities yourself before the text is
