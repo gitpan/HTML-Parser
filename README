@@ -1,3 +1,37 @@
+2001/03/14
+
+This is the HTML-Parser distribution with shared libraries compiled for
+MacPerl.  Shared libraries run only on PPC and CFM68K versions, not non-CFM
+68K versions.
+
+The original of the changed files are in Mac_changed.sit.
+
+This was compiled with Codewarrior IDE.
+
+All tests passed on PPC and CFM68K except for options.t which uses $SIG
+{__WARN__} inside. This is not supported by MacPerl.
+crashme.t on my Centris 660AV took a couple of minuites and seemed like
+really crashed, but it worked.
+
+Consecutive use of this would cause an error;
+ # Modification of a read-only value attempted
+This problem has been discussed on MacPerl-Module mailing list but still not
+solved.
+
+Best installed using cpan-mac, either with the CPAN shell, or the installme
+droplet.  From the CPAN shell, type:
+
+    cpan> install K/KI/KIMURA/HTML-Parser-3.19-bin-1-Mac.tgz
+
+Also, see the MMP page:
+
+    http://pudge.net/mmp/
+
+--
+KIMURA Takeshi
+mailto:kimura@cpan.org
+
+#===================================
 HTML-Parser
 -----------
 

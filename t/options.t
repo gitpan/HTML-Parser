@@ -29,7 +29,7 @@ $SIG{__WARN__} =
     sub {
 	local $_ = shift;
 	$seen_buggy_comment_warning++
-	    if /^netscape_buggy_comment\(\) is deprecated/;
+	    if /netscape_buggy_comment\(\) is deprecated/;
         print;
     };
 
