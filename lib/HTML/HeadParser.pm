@@ -18,7 +18,7 @@ HTML::HeadParser - Parse <HEAD> section of a HTML document
 
 The I<HTML::HeadParser> is a specialized (and lightweight)
 I<HTML::Parser> that will only parse the E<lt>HEAD>...E<lt>/HEAD>
-section of an HTML document.  The parse() and parse_file() methods
+section of an HTML document.  The parse() method
 will return a FALSE value as soon as some E<lt>BODY> element or body
 text are found, and should not be called again after this.
 
@@ -72,7 +72,7 @@ use HTML::Entities ();
 use strict;
 use vars qw($VERSION $DEBUG);
 #$DEBUG = 1;
-$VERSION = sprintf("%d.%02d", q$Revision: 2.6 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 2.8 $ =~ /(\d+)\.(\d+)/);
 
 my $FINISH = "HEAD PARSED\n";
 
@@ -120,6 +120,26 @@ sub parse
 	return '';
     }
     $self;
+}
+
+# more code duplication than I would like, but we need to treat the
+# return value from $self->parse as a signal to stop parsing.
+sub parse_file
+{
+    my($self, $file) = @_;
+    no strict 'refs';  # so that a symbol ref as $file works
+    local(*F);
+    unless (ref($file) || $file =~ /^\*[\w:]+$/) {
+        # Assume $file is a filename
+        open(F, $file) || die "Can't open $file: $!";
+        $file = \*F;
+    }
+    my $chunk = '';
+    while(read($file, $chunk, 512)) {
+        $self->parse($chunk) || last;
+    }
+    close($file);
+    return $self;
 }
 
 =item $hp->header;
