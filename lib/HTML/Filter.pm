@@ -3,9 +3,10 @@ package HTML::Filter;
 require HTML::Parser;
 @ISA=qw(HTML::Parser);
 
-$VERSION = sprintf("%d.%02d", q$Revision: 2.5 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 2.9 $ =~ /(\d+)\.(\d+)/);
 
 sub declaration { $_[0]->output("<!$_[1]>")     }
+sub process     { $_[0]->output($_[2])          }
 sub comment     { $_[0]->output("<!--$_[1]-->") }
 sub start       { $_[0]->output($_[4])          }
 sub end         { $_[0]->output($_[2])          }
@@ -21,6 +22,12 @@ __END__
 
 HTML::Filter - Filter HTML text through the parser
 
+=head1 NOTE
+
+This module is deprecated. C<HTML::Parser> now provides the
+functionally of C<HTML::Filter> much more efficiently with the the
+C<default> handler.
+
 =head1 SYNOPSIS
 
  require HTML::Filter;
@@ -28,13 +35,13 @@ HTML::Filter - Filter HTML text through the parser
 
 =head1 DESCRIPTION
 
-The I<HTML::Filter> is an HTML parser that by default prints the
-original text parsed (a slow version of cat(1) basically).  You can
-override the callback methods to modify the filtering for some of the
+C<HTML::Filter> is an HTML parser that by default prints the
+original text of each HTML element (a slow version of cat(1) basically).
+The callback methods may be overridden to modify the filtering for some
 HTML elements and you can override output() method which is called to
 print the HTML text.
 
-The I<HTML::Filter> is a subclass of I<HTML::Parser>. This means that
+C<HTML::Filter> is a subclass of C<HTML::Parser>. This means that
 the document should be given to the parser by calling the $p->parse()
 or $p->parse_file() methods.
 
@@ -62,7 +69,7 @@ table.
      my $self = shift;
      $self->{table_seen}++ if $_[0] eq "table";
      $self->SUPER::start(@_);
-  }  
+  }
 
   sub end
   {
@@ -88,20 +95,13 @@ something like this:
   sub output { push(@{$_[0]->{fhtml}}, $_[1]) }
   sub filtered_html { join("", @{$_[0]->{fhtml}}) }
 
-=head1 BUGS
-
-Comments in declarations are removed from the declarations and then
-inserted as separate comments after the declaration.  If you turn on
-strict_comment(), then comments with embedded "--" are split into
-multiple comments.
-
 =head1 SEE ALSO
 
 L<HTML::Parser>
 
 =head1 COPYRIGHT
 
-Copyright 1997-1998 Gisle Aas.
+Copyright 1997-1999 Gisle Aas.
 
 This library is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself.

@@ -1,13 +1,13 @@
 package HTML::TokeParser;
 
-# $Id: TokeParser.pm,v 2.7 1999/10/29 12:18:50 gisle Exp $
+# $Id: TokeParser.pm,v 2.18 1999/12/08 19:46:54 gisle Exp $
 
 require HTML::Parser;
 @ISA=qw(HTML::Parser);
-$VERSION = sprintf("%d.%02d", q$Revision: 2.7 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 2.18 $ =~ /(\d+)\.(\d+)/);
 
 use strict;
-use Carp qw(croak);
+use Carp ();
 use HTML::Entities qw(decode_entities);
 
 
@@ -15,35 +15,49 @@ sub new
 {
     my $class = shift;
     my $file = shift;
-    croak "Usage: $class->new(\$file)" unless defined $file;
+    Carp::croak("Usage: $class->new(\$file)")
+	  unless defined $file;
+
     if (!ref($file) && ref(\$file) ne "GLOB") {
 	require IO::File;
 	$file = IO::File->new($file, "r") || return;
     }
-    my $self = $class->SUPER::new;
-    $self->{tokens} = [];
+    my $self = $class->SUPER::new(api_version => 3);
+    my $accum = $self->{accum} = [];
+    $self->handler(start =>   $accum, "'S',tagname,attr,attrseq,text");
+    $self->handler(end =>     $accum, "'E',tagname,text");
+    $self->handler(text =>    $accum, "'T',text,is_cdata");
+    $self->handler(process => $accum, "'PI',token0,text");
+
+    # XXX The following two are not strictly V2 compatible.  We used
+    # to return something that did not contain the "<!(--)?" and
+    # "(--)?>" markers.
+    $self->handler(comment => $accum, "'C',text");
+    $self->handler(declaration => $accum, "'D',text");
+
     $self->{textify} = {img => "alt", applet => "alt"};
     if (ref($file) eq "SCALAR") {
-	$self->{toke_scalar} = $file;
-	$self->{toke_scalarpos}  = 0;
-    } else {
+	if (!defined $$file) {
+	    Carp::carp("HTML::TokeParser got undefined value as document")
+		if $^W;
+	    $self->{toke_eof}++;
+	}
+	else {
+	    $self->{toke_scalar} = $file;
+	    $self->{toke_scalarpos}  = 0;
+	}
+    }
+    else {
 	$self->{toke_file} = $file;
     }
     $self;
-}
-
-# Set up callback methods
-for (qw(declaration start end text comment)) {
-    my $t = uc(substr($_,0,1));
-    no strict 'refs';
-    *$_ = sub { my $self = shift; push(@{$self->{tokens}}, [$t, @_]) };
 }
 
 
 sub get_token
 {
     my $self = shift;
-    while (!@{$self->{tokens}} && !$self->{toke_eof}) {
+    while (!@{$self->{accum}} && !$self->{toke_eof}) {
 	if (my $f = $self->{toke_file}) {
 	    # must try to parse more from the file
 	    my $buf;
@@ -75,14 +89,14 @@ sub get_token
 	    die;
 	}
     }
-    shift @{$self->{tokens}};
+    shift @{$self->{accum}};
 }
 
 
 sub unget_token
 {
     my $self = shift;
-    unshift @{$self->{tokens}}, @_;
+    unshift @{$self->{accum}}, @_;
     $self;
 }
 
@@ -174,8 +188,7 @@ The HTML::TokeParser is an alternative interface to the HTML::Parser class.
 It basically turns the HTML::Parser inside out.  You associate a file
 (or any IO::Handle object or string) with the parser at construction time and
 then repeatedly call $parser->get_token to obtain the tags and text
-found in the parsed document.  No need to make a subclass to make the
-parser do anything.
+found in the parsed document.
 
 Calling the methods defined by the HTML::Parser base class will be
 confusing, so don't do that.  Use the following methods instead:
@@ -193,30 +206,31 @@ reading, then the constructor will return an undefined value and $!
 will tell you why it failed.
 
 If the argument is a reference to a plain scalar, then this scalar is
-taken to be the literal document to parse.  Changing the value of this
-scalar before all tokens have been extracted is not allowed.
+taken to be the literal document to parse.  The value of this
+scalar should not be changed before all tokens have been extracted.
 
 Otherwise the argument is taken to be some object that the
-C<HTML::TokeParser> can read() from when it need more data.  Typically
-it will be a filehandle of some kind.The stream will be read() until
+C<HTML::TokeParser> can read() from when it needs more data.  Typically
+it will be a filehandle of some kind.  The stream will be read() until
 EOF, but not closed.
 
 =item $p->get_token
 
 This method will return the next I<token> found in the HTML document,
 or C<undef> at the end of the document.  The token is returned as an
-array reference.  The first element of the array will be a single
-character string denoting the type of this token; "S" for start tag,
-"E" for end tag, "T" for text, "C" for comment, and "D" for
-declaration.  The rest of the array is the same as the arguments
-passed to the corresponding HTML::Parser callbacks (see
-L<HTML::Parser>).  This summarize the tokens that can occur:
+array reference.  The first element of the array will be a (mostly)
+single character string denoting the type of this token: "S" for start
+tag, "E" for end tag, "T" for text, "C" for comment, "D" for
+declaration, and "PI" for process instructions.  The rest of the array
+is the same as the arguments passed to the corresponding HTML::Parser
+callbacks (see L<HTML::Parser>).  Returned tokens look like this:
 
-  ["S", $tag, %$attr, @$attrseq, $origtext]
-  ["E", $tag, $origtext]
-  ["T", $text]
-  ["C", $text]
-  ["D", $text]
+  ["S",  $tag, %$attr, @$attrseq, $text]
+  ["E",  $tag, $text]
+  ["T",  $text]
+  ["C",  $text]
+  ["D",  $text]
+  ["PI", $text]
 
 =item $p->unget_token($token,...)
 
@@ -225,33 +239,33 @@ so that they are returned the next time $p->get_token is called.
 
 =item $p->get_tag( [$tag] )
 
-This method return the next start or end tag (skipping any other
-tokens), or C<undef> if there is no more tags in the document.  If an
-argument is given, then we skip tokens until the specified tag is
-found.  A tag is returned as an array reference of the same form as
+This method returns the next start or end tag (skipping any other
+tokens), or C<undef> if there are no more tags in the document.  If an
+argument is given, then we skip tokens until the specified tag type is
+found.  The tag is returned as an array reference in the same form as
 for $p->get_token above, but the type code (first element) is missing
 and the name of end tags are prefixed with "/".  This means that the
 tags returned look like this:
 
-  [$tag, %$attr, @$attrseq, $origtext]
-  ["/$tag", $origtext]
+  [$tag, %$attr, @$attrseq, $text]
+  ["/$tag", $text]
 
 =item $p->get_text( [$endtag] )
 
 This method returns all text found at the current position. It will
 return a zero length string if the next token is not text.  The
-optional $endtag argument specify that any text occurring before the
-given tag is to be returned.  Any entities will be expanded to their
+optional $endtag argument specifies that any text occurring before the
+given tag is to be returned.  Any entities will be converted to their
 corresponding character.
 
-The $p->{textify} attribute is a hash that define how certain tags can
-be treated as text.  If the name of a start tag match a key in this
+The $p->{textify} attribute is a hash that defines how certain tags can
+be treated as text.  If the name of a start tag matches a key in this
 hash then this tag is converted to text.  The hash value is used to
 specify which tag attribute to obtain the text from.  If this tag
 attribute is missing, then the upper case name of the tag enclosed in
 brackets is returned, e.g. "[IMG]".  The hash value can also be a
 subroutine reference.  In this case the routine is called with the
-start tag token content as arguments and the return values is treated
+start tag token content as its argument and the return value is treated
 as the text.
 
 The default $p->{textify} value is:
@@ -259,19 +273,19 @@ The default $p->{textify} value is:
   {img => "alt", applet => "alt"}
 
 This means that <IMG> and <APPLET> tags are treated as text, and that
-the text to substitute can be found as ALT attribute.
+the text to substitute can be found in the ALT attribute.
 
 =item $p->get_trimmed_text( [$endtag] )
 
-Same as $p->get_text above, but will collapse any sequence of white
-space to a single space character.  Leading and trailing space is
+Same as $p->get_text above, but will collapse any sequences of white
+space to a single space character.  Leading and trailing white space is
 removed.
 
 =back
 
 =head1 EXAMPLES
 
-This example extract all links from a document.  It will print one
+This example extracts all links from a document.  It will print one
 line for each link, containing the URL and the textual description
 between the <A>...</A> tags:
 

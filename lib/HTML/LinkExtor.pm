@@ -16,7 +16,7 @@ HTML::LinkExtor - Extract links from an HTML document
 
 =head1 DESCRIPTION
 
-The I<HTML::LinkExtor> is an HTML parser that extract links from an
+I<HTML::LinkExtor> is an HTML parser that extracts links from an
 HTML document.  The I<HTML::LinkExtor> is a subclass of
 I<HTML::Parser>. This means that the document should be given to the
 parser by calling the $p->parse() or $p->parse_file() methods.
@@ -25,41 +25,54 @@ parser by calling the $p->parse() or $p->parse_file() methods.
 
 require HTML::Parser;
 @ISA = qw(HTML::Parser);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.19 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.28 $ =~ /(\d+)\.(\d+)/);
 
 use strict;
 use vars qw(%LINK_ELEMENT);
 
-# Elements that might contain links and the name of the link attribute
+# Tags that might contain links and the link attribute name(s)
 %LINK_ELEMENT =
 (
- body   => 'background',
- base   => 'href',
- a      => 'href',
- img    => [qw(src lowsrc usemap)],   # 'lowsrc' is a Netscape invention
- form   => 'action',
- input  => 'src',
-'link'  => 'href',          # need quoting since link is a perl builtin
- frame  => 'src',
- applet => [qw(codebase code)],
- area   => 'href',
- frame  => 'src',   # Netscape 2.0 extention
- embed  => 'src',   # used in Netscape 2.0 for Shockwave and things like that
- table  => 'background',   # used in IE, Netscape
+ a       => 'href',
+ applet  => [qw(archive codebase code)],
+ area    => 'href',
+ base    => 'href',
+ bgsound => 'src',
+ blockquote => 'cite',
+ body    => 'background',
+ del     => 'cite',
+ embed   => [qw(pluginspage src)],
+ form    => 'action',
+ frame   => [qw(src longdesc)],
+ iframe  => [qw(src longdesc)],
+ ilayer  => 'background',
+ img     => [qw(src lowsrc longdesc usemap)],
+ input   => [qw(src usemap)],
+ ins     => 'cite',
+ isindex => 'action',
+ head    => 'profile',
+ layer   => [qw(background src)],
+'link'   => 'href',
+ object  => [qw(classid codebase data archive usemap)],
+'q'      => 'cite',
+ script  => [qw(src for)],
+ table   => 'background',
+ td      => 'background',
+ th      => 'background',
+ xmp     => 'href',
 );
 
 =over 4
 
 =item $p = HTML::LinkExtor->new([$callback[, $base]])
 
-The constructor takes two optional argument. The first is a reference
+The constructor takes two optional arguments. The first is a reference
 to a callback routine. It will be called as links are found. If a
 callback is not provided, then links are just accumulated internally
 and can be retrieved by calling the $p->links() method.
 
-The $base is an optional base URL used to absolutize all URLs found.
-You need to have the I<URI::URL> module installed if you provide
-$base.
+The $base argument is an optional base URL used to absolutize all URLs found.
+You need to have the I<URI> module installed if you provide $base.
 
 The callback is called with the lowercase tag name as first argument,
 and then all link attributes as separate key/value pairs.  All
@@ -70,18 +83,19 @@ non-link attributes are removed.
 sub new
 {
     my($class, $cb, $base) = @_;
-    my $self = $class->SUPER::new;
+    my $self = $class->SUPER::new(start_h => ["_start_tag",
+					      "self,tagname,attr"]);
     $self->{extractlink_cb} = $cb;
     if ($base) {
-	require URI::URL;
-	$self->{extractlink_base} = URI::URL->new($base);
+	require URI;
+	$self->{extractlink_base} = URI->new($base);
     }
     $self;
 }
 
-sub start
+sub _start_tag
 {
-    my($self, $tag, $attr) = @_;  # $attr is reference to a HASH
+    my($self, $tag, $attr) = @_;
     return unless exists $LINK_ELEMENT{$tag};
 
     my $base = $self->{extractlink_base};
@@ -92,7 +106,7 @@ sub start
     my $a;
     for $a (@$links) {
 	next unless exists $attr->{$a};
-	push(@links, $a, $base ? URI::URL->new($attr->{$a}, $base)->abs
+	push(@links, $a, $base ? URI->new($attr->{$a}, $base)->abs($base)
                                : $attr->{$a});
     }
     return unless @links;
@@ -118,8 +132,8 @@ values will be anonymous arrays with the follwing elements:
   [$tag, $attr => $url1, $attr2 => $url2,...]
 
 The $p->links method will also truncate the internal link list.  This
-means that if the method is called twice without any parsing in
-between then the second call will return an empty list.
+means that if the method is called twice without any parsing
+between them the second call will return an empty list.
 
 Also note that $p->links will always be empty if a callback routine
 was provided when the I<HTML::LinkExtor> was created.
@@ -133,7 +147,7 @@ sub links
 }
 
 # We override the parse_file() method so that we can clear the links
-# before we start with a new file.
+# before we start a new file.
 sub parse_file
 {
     my $self = shift;
@@ -184,7 +198,7 @@ L<HTML::Parser>, L<LWP>, L<URI::URL>
 
 =head1 COPYRIGHT
 
-Copyright 1996-1998 Gisle Aas.
+Copyright 1996-1999 Gisle Aas.
 
 This library is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself.

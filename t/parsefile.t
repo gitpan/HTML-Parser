@@ -1,14 +1,13 @@
-print "1..5\n";
+print "1..6\n";
 
 my $filename = "file$$.htm";
-open(FILE, ">$filename") || die;
-
-my $testno = 1;
-
-print FILE <<'EOT';
+die "$filename is already there" if -e $filename;
+open(FILE, ">$filename") || die "Can't create $filename: $!";
+print FILE <<'EOT'; close(FILE);
 <title>Heisan</title>
 EOT
-close(FILE);
+
+my $testno = 1;
 
 {
     package MyParser;
@@ -36,6 +35,17 @@ my $io = IO::File->new($filename) || die;
 MyParser->new->parse_file($io);
 $io->seek(0, 0) || die;
 MyParser->new->parse_file(*$io);
+
+my $text = '';
+$io->seek(0, 0) || die;
+MyParser->new(
+    start_h => [ sub{ shift->eof; }, "self" ],
+    text_h =>  [ sub{ $text = shift; }, "text" ])->parse_file(*$io);
+print "not " if $text;
+print "ok $testno\n";
+$testno++;
+
+close($io);  # needed because of bug in perl
 undef($io);
 
-unlink($filename);
+unlink($filename) or warn "Can't unlink $filename: $!";
