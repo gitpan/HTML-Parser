@@ -1,6 +1,6 @@
-/* $Id: Parser.xs,v 2.129 2004/11/29 11:02:41 gisle Exp $
+/* $Id: Parser.xs,v 2.131 2005/01/06 09:02:28 gisle Exp $
  *
- * Copyright 1999-2004, Gisle Aas.
+ * Copyright 1999-2005, Gisle Aas.
  * Copyright 1999-2000, Michael A. Chase.
  *
  * This library is free software; you can redistribute it and/or
@@ -262,6 +262,7 @@ parse(self, chunk)
 	        count = perl_call_sv(generator, G_SCALAR|G_EVAL);
 		SPAGAIN;
 		chunk = count ? POPs : 0;
+	        PUTBACK;
 
 	        if (SvTRUE(ERRSV)) {
 		    p_state->parsing = 0;
