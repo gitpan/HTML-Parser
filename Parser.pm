@@ -1,7 +1,7 @@
 package HTML::Parser;
 
-# Copyright 1996-1999, Gisle Aas.
-# Copyright 1999, Michael A. Chase.
+# Copyright 1996-2000, Gisle Aas.
+# Copyright 1999-2000, Michael A. Chase.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
@@ -9,7 +9,7 @@ package HTML::Parser;
 use strict;
 use vars qw($VERSION @ISA);
 
-$VERSION = '3.02';  # $Date: 1999/12/21 09:42:48 $
+$VERSION = '3.04';  # $Date: 2000/01/15 16:09:41 $
 
 require HTML::Entities;
 
@@ -208,7 +208,8 @@ specifications from W3C.  Where there is disagreement there is often
 an option that you can enable to get the official behaviour.
 
 The document to be parsed may be supplied in arbitrary chunks.  This
-makes on-the-fly parsing as documents are received possible.
+makes on-the-fly parsing as documents are received from the network
+possible.
 
 If event driven parsing does not feel right for your application, you
 might want to use C<HTML::TokeParser>.  It is a
@@ -227,7 +228,7 @@ The following method is used to construct a new C<HTML::Parser> object:
 This class method creates a new C<HTML::Parser> object and
 returns it.  Key/value pair arguments may be provided to assign event
 handlers or initialize parser options.  The handlers and parser
-options can also be set or modified by method calls described later.
+options can also be set or modified later by method calls described below.
 
 If a top level key is in the form "<event>_h" (e.g., "text_h"} then it
 assigns a handler to that event, otherwise it initializes a parser
@@ -358,7 +359,8 @@ since "LIST]" is not a legal attribute name.
 
 This method sets the value reported for boolean attributes inside HTML
 start tags.  By default, the name of the attribute is also used as its
-value.  This affects the values reported for C<tokens> and C<attr>.
+value.  This affects the values reported for C<tokens> and C<attr>
+argspecs.
 
 =item $p->xml_mode( [$bool] )
 
@@ -390,7 +392,7 @@ enabled, blocks of text are always reported in one piece.  This will
 delay the text event until the following (non-text) event has been
 recognized by the parser.
 
-=item $p->marked_section( [$bool] )
+=item $p->marked_sections( [$bool] )
 
 By default, section markings like <![CDATA[...]]> are treated like
 ordinary text.  When this attribute is enabled section markings are
@@ -831,34 +833,34 @@ recognized.
 
 =head1 DIAGNOSTICS
 
-The following diagnostics can occur with HTML::Parser.  The notation
-used for this listings is the same as for L<perldiag>:
+The following messages may be produced by HTML::Parser.  The notation
+in this listing is the same as used in L<perldiag>:
 
 =over
 
 =item Not a reference to a hash
 
-(F) The object that is blessed into (or isa) HTML::Parser is not a
-hash as the HTML::Parser methods assume.
+(F) The object blessed into or subclassed from HTML::Parser is not a
+hash as required by the HTML::Parser methods.
 
 =item Bad signature in parser state object at %p
 
-(F) The _hparser_xs_state element does not point to a valid 'struct
-p_state'.  Something must have changed the internal pointer value
+(F) The _hparser_xs_state element does not refer to a valid state structure.
+Something must have changed the internal value
 stored in this hash element, or the memory has been overwritten.
 
 =item _hparser_xs_state element is not a reference
 
-(F) The _hparser_xs_state element is destroyed.
+(F) The _hparser_xs_state element has been destroyed.
 
 =item Can't find '_hparser_xs_state' element in HTML::Parser hash
 
-(F) The _hparser_xs_state element has been deleted from the parser
-hash.
+(F) The _hparser_xs_state element is missing from the parser hash.
+It was either deleted, or not created when the object was created.
 
 =item API version %s not supported by HTML::Parser %s
 
-(F) The constructor option 'api_version' with an argument greater
+(F) The constructor option 'api_version' with an argument greater than
 or equal to 4 is reserved for future extentions.
 
 =item Bad constructor option '%s'
@@ -868,13 +870,13 @@ init() methods.
 
 =item Parse loop not allowed
 
-(F) A handler is not allowed to invoke the parse() or parse_file()
-methods.
+(F) A handler invoked the parse() or parse_file() method.
+This is not permitted.
 
 =item marked sections not supported
 
-(F) If the parser has been compiled without support for marked
-sections, and you try to invoke the $p->marked_sections() method.
+(F) The $p->marked_sections() method was invoked in a HTML::Parser
+module that was compiled without support for marked sections. 
 
 =item Unknown boolean attribute (%d)
 
@@ -884,7 +886,7 @@ boolean attributes.
 =item Only code or array references allowed as handler
 
 (F) The second argument for $p->handler must be either a subroutine
-reference, then name of a subroutine or method, or an reference to an
+reference, then name of a subroutine or method, or a reference to an
 array.
 
 =item No handler for %s events
@@ -894,31 +896,31 @@ of "start", "end", "text", "process", "declaration" or "comment".
 
 =item Unrecognized identifier %s in argspec
 
-(F) The argspec name is now known.  Use one of the names mentioned in
-the argspec section above.
+(F) The identifier is not a known argspec name.
+Use one of the names mentioned in the argspec section above.
 
 =item Literal string is longer than 255 chars in argspec
 
 (F) The current implementation limits the length of literals in
-argspec to 255 characters.  Use a shorted literal.
+an argspec to 255 characters.  Make the literal shorter.
 
 =item Backslash reserved for literal string in argspec
 
-(F) The backslash character "\" can't currently be used in argspec
-literals.  It is reserved so that we can implement quoting or quotes
-later.
+(F) The backslash character "\" is not allowed in argspec literals.
+It is reserved to permit quoting inside a literal in a later version.
 
 =item Unterminated literal string in argspec
 
-(F) No terminating quote character for a string literal was found.
+(F) The terminating quote character for a literal was not found.
 
 =item Bad argspec (%s)
 
-(F) Only identifier names, space and comma is allowed in argspec.
+(F) Only identifier names, literals, spaces and commas
+are allowed in argspecs.
 
 =item Missing comma separator in argspec
 
-(F) Identifiers in argspec must be separated with ","
+(F) Identifiers in an argspec must be separated with ",".
 
 =back
 
@@ -936,8 +938,8 @@ be found at C<http://www.sgml.u-net.com/book/sgml-8.htm>.
 
 =head1 COPYRIGHT
 
- Copyright 1996-1999 Gisle Aas. All rights reserved.
- Copyright 1999 Michael A. Chase.  All rights reserved.
+ Copyright 1996-2000 Gisle Aas. All rights reserved.
+ Copyright 1999-2000 Michael A. Chase.  All rights reserved.
 
 This library is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself.
