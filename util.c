@@ -1,4 +1,4 @@
-/* $Id: util.c,v 2.7 2000/12/04 04:55:42 gisle Exp $
+/* $Id: util.c,v 2.9 2000/12/26 08:52:44 gisle Exp $
  *
  * Copyright 1999-2000, Gisle Aas.
  *
@@ -12,7 +12,7 @@
 
 
 EXTERN SV*
-sv_lower(SV* sv)
+sv_lower(pTHX_ SV* sv)
 {
    STRLEN len;
    char *s = SvPV_force(sv, len);
@@ -40,7 +40,7 @@ strnEQx(const char* s1, const char* s2, STRLEN n, int ignore_case)
 }
 
 EXTERN SV*
-decode_entities(SV* sv, HV* entity2char)
+decode_entities(pTHX_ SV* sv, HV* entity2char)
 {
   STRLEN len;
   char *s = SvPV_force(sv, len);

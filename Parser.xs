@@ -1,4 +1,4 @@
-/* $Id: Parser.xs,v 2.93 2000/12/03 19:04:12 gisle Exp $
+/* $Id: Parser.xs,v 2.95 2000/12/26 08:52:44 gisle Exp $
  *
  * Copyright 1999-2000, Gisle Aas.
  * Copyright 1999-2000, Michael A. Chase.
@@ -14,6 +14,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+#define PERL_NO_GET_CONTEXT     /* we want efficiency */
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"
@@ -54,6 +55,15 @@ newSVpvn(char *s, STRLEN len)
 #define UNICODE_ENTITIES /**/
 #endif /* perl-5.6 or better */
 
+#ifndef dNOOP
+   #define dNOOP extern int errno
+#endif
+#ifndef dTHX
+   #define dTHX dNOOP
+   #define pTHX_
+   #define aTHX_
+#endif
+
 #ifndef MEMBER_TO_FPTR
    #define MEMBER_TO_FPTR(x) (x)
 #endif
@@ -84,6 +94,7 @@ HV* entity2char;            /* %HTML::Entities::entity2char */
 static SV*
 check_handler(SV* h)
 {
+  dTHX;
   if (SvROK(h)) {
     SV* myref = SvRV(h);
     if (SvTYPE(myref) == SVt_PVCV)
@@ -99,16 +110,18 @@ check_handler(SV* h)
 static PSTATE*
 get_pstate_iv(SV* sv)
 {
-    PSTATE* p = (PSTATE*)SvIV(sv);
-    if (p->signature != P_SIGNATURE)
-      croak("Bad signature in parser state object at %p", p);
-    return p;
+  dTHX;
+  PSTATE* p = (PSTATE*)SvIV(sv);
+  if (p->signature != P_SIGNATURE)
+    croak("Bad signature in parser state object at %p", p);
+  return p;
 }
 
 
 static PSTATE*
 get_pstate_hv(SV* sv)                               /* used by XS typemap */
 {
+  dTHX;
   HV* hv;
   SV** svp;
 
@@ -131,6 +144,7 @@ get_pstate_hv(SV* sv)                               /* used by XS typemap */
 static void
 free_pstate(PSTATE* pstate)
 {
+  dTHX;
   int i;
   SvREFCNT_dec(pstate->buf);
   SvREFCNT_dec(pstate->pend_text);
@@ -146,10 +160,6 @@ free_pstate(PSTATE* pstate)
   Safefree(pstate);
 }
 
-
-#ifndef pTHX_
-#define pTHX_
-#endif
 
 static int
 magic_free_pstate(pTHX_ SV *sv, MAGIC *mg)
@@ -208,7 +218,7 @@ parse(self, chunk)
 	if (p_state->parsing)
     	    croak("Parse loop not allowed");
         p_state->parsing = 1;
-	parse(p_state, chunk, self);
+	parse(aTHX_ p_state, chunk, self);
         p_state->parsing = 0;
 	if (p_state->eof) {
 	    p_state->eof = 0;
@@ -225,7 +235,7 @@ eof(self)
             p_state->eof = 1;
         else {
 	    p_state->parsing = 1;
-	    parse(p_state, 0, self); /* flush */
+	    parse(aTHX_ p_state, 0, self); /* flush */
 	    p_state->parsing = 0;
 	}
 
@@ -335,7 +345,7 @@ decode_entities(...)
 	        ST(i) = sv_2mortal(newSVsv(ST(i)));
 	    else if (SvREADONLY(ST(i)))
 		croak("Can't inline decode readonly string");
-	    decode_entities(ST(i), entity2char);
+	    decode_entities(aTHX_ ST(i), entity2char);
 	}
 	SP += items;
 
