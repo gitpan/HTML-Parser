@@ -1,8 +1,7 @@
 #!perl -w
 
 use strict;
-use Test qw(plan ok skip);
-plan tests => 6;
+use Test::More tests => 11;
 
 { package H;
   sub new { bless {}, shift; }
@@ -84,45 +83,41 @@ $| = 1;
 require HTML::HeadParser;
 my $p = HTML::HeadParser->new( H->new );
 
-my $bad = 0;
-
-print "\n#### Parsing full text...\n";
 if ($p->parse($HTML)) {
-    $bad++;
-    print "Need more data which should not happen\n";
+    fail("Need more data which should not happen");
 } else {
-    print $p->as_string;
+    #diag $p->as_string;
+    pass();
 }
 
-$p->header('Title') =~ /Å være eller å ikke være/ or $bad++;
-$p->header('Expires') eq 'Soon' or $bad++;
-$p->header('Content-Base') eq 'http://www.sn.no' or $bad++;
-$p->header('Link') =~ /<mailto:gisle\@aas.no>/ or $bad++;
+like($p->header('Title'), qr/Å være eller å ikke være/);
+is($p->header('Expires'), 'Soon');
+is($p->header('Content-Base'), 'http://www.sn.no');
+like($p->header('Link'), qr/<mailto:gisle\@aas.no>/);
 
 # This header should not be present because the head ended
-$p->header('Isindex') and $bad++;
-
-ok(!$bad);
+ok(!$p->header('Isindex'));
 
 
 # Try feeding one char at a time
-print "\n\n#### Parsing once char at a time...\n";
 my $expected = $p->as_string;
+my $nl = 1;
 $p = HTML::HeadParser->new(H->new);
 while ($HTML =~ /(.)/sg) {
-    print $1;
+    #print STDERR '#' if $nl;
+    #print STDERR $1;
+    $nl = $1 eq "\n";
     $p->parse($1) or last;
 }
-print "«««« Enough!!\n";
-ok($p->as_string, $expected);
+is($p->as_string, $expected);
 
 
 # Try reading it from a file
-print "\n\n#### Parsing from file\n\n";
 my $file = "hptest$$.html";
 die "$file already exists" if -e $file;
 
 open(FILE, ">$file") or die "Can't create $file: $!";
+binmode(FILE);
 print FILE $HTML;
 print FILE "<p>This is more content...</p>\n" x 2000;
 print FILE "<title>Buuuh!</title>\n" x 200;
@@ -132,35 +127,28 @@ $p = HTML::HeadParser->new(H->new);
 $p->parse_file($file);
 unlink($file) or warn "Can't unlink $file: $!";
 
-print $p->as_string;
-
-ok($p->header("Title"), "Å være eller å ikke være");
+is($p->header("Title"), "Å være eller å ikke være");
 
 
 # We got into an infinite loop on data without tags and no EOL.
 # This was actually a HTML::Parser bug.
-print "\n\n#### Try to reproduce bug with empty file\n\n";
 open(FILE, ">$file") or die "Can't create $file: $!";
 print FILE "Foo";
 close(FILE);
 
-print "\n\n#### BOM\n";
 $p = HTML::HeadParser->new(H->new);
 $p->parse_file($file);
 unlink($file) or warn "Can't unlink $file: $!";
 
 ok(!$p->as_string);
 
-if ($] < 5.008) {
-    for (1..2) {
-	skip("Need Unicode support", 1);
-    }
-}
-else {
-    # Test that the Unicode BOM does not confuse us?
-    $p = HTML::HeadParser->new(H->new);
-    ok($p->parse("\x{FEFF}\n<title>Hi <foo></title>"));
-    $p->eof;
+SKIP: {
+  skip "Need Unicode support", 2 if $] < 5.008;
 
-    ok($p->header("title"), "Hi <foo>");
+  # Test that the Unicode BOM does not confuse us?
+  $p = HTML::HeadParser->new(H->new);
+  ok($p->parse("\x{FEFF}\n<title>Hi <foo></title>"));
+  $p->eof;
+
+  is($p->header("title"), "Hi <foo>");
 }

@@ -1,4 +1,4 @@
-
+use Test::More;
 
 require HTML::Parser;
 
@@ -8,10 +8,8 @@ my @result;
 sub start
 {
     my($self, $tag, $attr) = @_;
-    print "START[$tag]\n";
     push @result, "START[$tag]";
     for (sort keys %$attr) {
-	print "\t$_: $attr->{$_}\n";
         push @result, "\t$_: " . $attr->{$_};
     }
     $start++;
@@ -20,7 +18,6 @@ sub start
 sub end
 {
     my($self, $tag) = @_;
-    print "END[$tag]\n";
     push @result, "END[$tag]";
     $end++;
 }
@@ -28,7 +25,6 @@ sub end
 sub text
 {
     my $self = shift;
-    print "TEXT[$_[0]]\n";
     push @result, "TEXT[$_[0]]";
     $text++;
 }
@@ -36,7 +32,6 @@ sub text
 sub comment
 {
     my $self = shift;
-    print "COMMENT[$_[0]]\n";
     push @result, "COMMENT[$_[0]]";
     $comment++;
 }
@@ -44,7 +39,6 @@ sub comment
 sub declaration
 {
     my $self = shift;
-    print "DECLARATION[$_[0]]\n";
     push @result, "DECLARATION[$_[0]]";
     $declaration++;
 }
@@ -88,36 +82,20 @@ package main;
          ['COMMENT[ comment <!]', 'COMMENT[> comment ]'],
      '<!-- <a href="foo"> -->' => ['COMMENT[ <a href="foo"> ]'],
      );
-my $n = @tests / 2;
-print "1..$n\n";
 
-my ($html, $expected, $got, $i);
-$i = 0;
+plan tests => @tests / 2;
+
+my $i = 0;
+TEST:
 while (@tests) {
     ++$i;
-    ($html, $expected) = splice @tests, 0, 2;
-    print "-" x 50, " $i\n";
-    print "$html\n";
-    print "-" x 50, " $i\n";
+    my ($html, $expected) = splice @tests, 0, 2;
     @result = ();
 
-   $p = new P;
-   $p->strict_comment(1);
+    $p = new P;
+    $p->strict_comment(1);
     $p->parse($html)->eof;
-   
-    foreach (@$expected) {
-	$got = shift @result;
-	if ($_ ne $got) {
-	    print "Expected: $_\n",
-	          "Got:      $got\n";
-	    print( "not " );
-	    last; 
-	}
-    }
-    if (@result) {
-	print "\nGot: @result\n";
-	print "not ";
-    }
 
-   print "ok $i\n";
+    ok(eq_array($expected, \@result)) or diag("Expected: @$expected\n",
+					      "Got:      @result\n");
 }

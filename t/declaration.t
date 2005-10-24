@@ -1,4 +1,4 @@
-print "1..1\n";
+use Test::More tests => 1;
 
 use HTML::Parser;
 my $res = "";
@@ -28,9 +28,7 @@ $p->parse(<<EOT)->eof;
 <!row --> foo
 EOT
 
-print $res;
-
-print "not " unless $res eq <<EOT; print "ok 1\n";
+is($res, <<EOT);
 [<DOCTYPE>
 <HTML>
 <PUBLIC>
