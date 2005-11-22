@@ -1,3 +1,16 @@
+2005-11-22   Gisle Aas <gisle@ActiveState.com>
+
+     Release 3.47
+
+     Added empty_element_tags and xml_pic configuration
+     options.  These make it possible to enable these XML
+     features without enabling the full XML-mode.
+
+     The empty_element_tags is enabled by default for
+     HTML::TokeParser.
+
+
+
 2005-10-24   Gisle Aas <gisle@ActiveState.com>
 
      Release 3.46
@@ -6,10 +19,10 @@
      This breaks Unicode parsing.
      https://rt.cpan.org/Ticket/Display.html?id=15068
 
-     The unbroken_text option is now by default on
+     The unbroken_text option is now on by default
      for HTML::TokeParser.
 
-     HTML::Entities::encode will no encode "'" by default.
+     HTML::Entities::encode will now encode "'" by default.
 
      Improved report/ignore_tags documentation by
      Norbert Kiesel <nkiesel@tbdnetworks.com>.
