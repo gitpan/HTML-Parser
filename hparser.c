@@ -1,6 +1,6 @@
-/* $Id: hparser.c,v 2.123 2005/12/02 17:32:02 gisle Exp $
+/* $Id: hparser.c,v 2.126 2006/02/08 10:54:33 gisle Exp $
  *
- * Copyright 1999-2005, Gisle Aas
+ * Copyright 1999-2006, Gisle Aas
  * Copyright 1999-2000, Michael A. Chase
  *
  * This library is free software; you can redistribute it and/or
@@ -134,6 +134,12 @@ report_event(PSTATE* p_state,
 #else
     #define CHR_DIST(a,b) ((a) - (b))
 #endif
+
+    /* some events might still fire after a handler has signaled eof
+     * so suppress them here.
+     */
+    if (p_state->eof)
+	return;
 
     /* capture offsets */
     STRLEN offset = p_state->offset;
@@ -1607,20 +1613,17 @@ parse_buf(pTHX_ PSTATE* p_state, char *beg, char *end, U32 utf8, SV* self)
 	    if (*s == ']') {
 		char *end_text = s;
 		s++;
-		if (*s == ']') {
-		    s++;
-		    if (*s == '>') {
-			s++;
-			/* marked section end */
-			if (t != end_text)
-			    report_event(p_state, E_TEXT, t, end_text, utf8,
-					 0, 0, self);
-			report_event(p_state, E_NONE, end_text, s, utf8, 0, 0, self);
-			t = s;
-			SvREFCNT_dec(av_pop(p_state->ms_stack));
-			marked_section_update(p_state);
-			continue;
-		    }
+		if (*s == ']' && *(s + 1) == '>') {
+		    s += 2;
+		    /* marked section end */
+		    if (t != end_text)
+			report_event(p_state, E_TEXT, t, end_text, utf8,
+				     0, 0, self);
+		    report_event(p_state, E_NONE, end_text, s, utf8, 0, 0, self);
+		    t = s;
+		    SvREFCNT_dec(av_pop(p_state->ms_stack));
+		    marked_section_update(p_state);
+		    continue;
 		}
 	    }
 	    if (s == end) {
