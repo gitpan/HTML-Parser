@@ -1,6 +1,6 @@
-/* $Id: util.c,v 2.28 2004/12/06 09:11:37 gisle Exp $
+/* $Id: util.c,v 2.30 2006/03/22 09:15:17 gisle Exp $
  *
- * Copyright 1999-2004, Gisle Aas.
+ * Copyright 1999-2006, Gisle Aas.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the same terms as Perl itself.
@@ -63,7 +63,7 @@ grow_gap(pTHX_ SV* sv, STRLEN grow, char** t, char** s, char** e)
 }
 
 EXTERN SV*
-decode_entities(pTHX_ SV* sv, HV* entity2char, bool allow_unterminated)
+decode_entities(pTHX_ SV* sv, HV* entity2char, bool expand_prefix)
 {
     STRLEN len;
     char *s = SvPV_force(sv, len);
@@ -184,14 +184,17 @@ decode_entities(pTHX_ SV* sv, HV* entity2char, bool allow_unterminated)
 	    while (isALNUM(*s))
 		s++;
 	    if (ent_name != s && entity2char) {
-		SV** svp = hv_fetch(entity2char, ent_name, s - ent_name, 0);
-		if (svp) {
+		SV** svp;
+		if (              (svp = hv_fetch(entity2char, ent_name, s - ent_name, 0)) ||
+		    (*s == ';' && (svp = hv_fetch(entity2char, ent_name, s - ent_name + 1, 0)))
+		   )
+		{
 		    repl = SvPV(*svp, repl_len);
 #ifdef UNICODE_HTML_PARSER
 		    repl_utf8 = SvUTF8(*svp);
 #endif
 		}
-		else if (allow_unterminated) {
+		else if (expand_prefix) {
 		    char *ss = s - 1;
 		    while (ss > ent_name) {
 			svp = hv_fetch(entity2char, ent_name, ss - ent_name, 0);
