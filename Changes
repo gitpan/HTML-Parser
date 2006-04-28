@@ -1,3 +1,16 @@
+2006-04-28   Gisle Aas <gisle@ActiveState.com>
+
+     Release 3.54
+
+     Yaakov Belch discovered yet another issue with <script> parsing.
+     Enabling of 'empty_element_tags' got the parser confused
+     if it found such a tag for elements that are normally parsed
+     in literal mode.  Of these <script src="..."/> is the only
+     one likely to be found in documents.
+     <http://rt.cpan.org//Ticket/Display.html?id=18965>
+
+
+
 2006-04-27   Gisle Aas <gisle@ActiveState.com>
 
      Release 3.53
@@ -5,6 +18,7 @@
      When ignore_element was enabled it got confused if the
      corresponding tags did not nest properly; the end tag
      was treated it as if it was a start tag.
+     Found and fixed by Yaakov Belch <code@yaakovnet.net>.
      <http://rt.cpan.org/Ticket/Display.html?id=18936>
 
 
