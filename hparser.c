@@ -1,4 +1,4 @@
-/* $Id: hparser.c,v 2.130 2006/04/28 07:52:03 gisle Exp $
+/* $Id: hparser.c,v 2.133 2006/07/10 09:00:47 gisle Exp $
  *
  * Copyright 1999-2006, Gisle Aas
  * Copyright 1999-2000, Michael A. Chase
@@ -1142,6 +1142,8 @@ parse_decl(PSTATE* p_state, char *beg, char *end, U32 utf8, SV* self)
 	while (s < end && isHNAME_CHAR(*s))
 	    s++;
 	decl_id_len = s - decl_id;
+	if (s == end)
+	    goto PREMATURE;
 
 	/* just hardcode a few names as the recognized declarations */
 	if (!((decl_id_len == 7 &&
@@ -1239,7 +1241,8 @@ DECL_FAIL:
 	return 0;
 
     /* consider everything up to the first '>' a comment */
-    s = skip_until_gt(s, end);
+    while (s < end && *s != '>')
+	s++;
     if (s < end) {
 	token_pos_t token;
 	token.beg = beg + 2;
@@ -1757,9 +1760,26 @@ parse(pTHX_
 
 	    while (s < end) {
 		if (p_state->literal_mode) {
-		    if (strEQ(p_state->literal_mode, "plaintext") && !p_state->closing_plaintext)
+		    if (strEQ(p_state->literal_mode, "plaintext") ||
+			strEQ(p_state->literal_mode, "xmp") ||
+			strEQ(p_state->literal_mode, "textarea"))
+		    {
+			/* rest is considered text */
 			break;
-		    p_state->pending_end_tag = p_state->literal_mode;
+                    }
+		    if (strEQ(p_state->literal_mode, "script") ||
+			strEQ(p_state->literal_mode, "style"))
+		    {
+			/* effectively make it an empty element */
+			token_pos_t t;
+			char dummy;
+			t.beg = p_state->literal_mode;
+			t.end = p_state->literal_mode + strlen(p_state->literal_mode);
+			report_event(p_state, E_END, &dummy, &dummy, 0, &t, 1, self);
+		    }
+		    else {
+			p_state->pending_end_tag = p_state->literal_mode;
+		    }
 		    p_state->literal_mode = 0;
 		    s = parse_buf(aTHX_ p_state, s, end, utf8, self);
 		    continue;
@@ -1772,12 +1792,15 @@ parse(pTHX_
 		}
 
 		if (!p_state->strict_comment && *s == '<') {
-		    /* some kind of unterminated markup.  Report rest as as comment */
-		    token_pos_t token;
-		    token.beg = s + 1;
-		    token.end = end;
-		    report_event(p_state, E_COMMENT, s, end, utf8, &token, 1, self);
-		    s = end;
+		    char *s1 = s + 1;
+		    if (s1 == end || isHNAME_FIRST(*s1) || *s1 == '/' || *s1 == '!' || *s1 == '?') {
+			/* some kind of unterminated markup.  Report rest as as comment */
+			token_pos_t token;
+			token.beg = s + 1;
+			token.end = end;
+			report_event(p_state, E_COMMENT, s, end, utf8, &token, 1, self);
+			s = end;
+		    }
 		}
 
 		break;
