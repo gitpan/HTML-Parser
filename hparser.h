@@ -1,5 +1,4 @@
-/* $Id: hparser.h,v 2.34 2006/04/26 07:01:10 gisle Exp $
- *
+/* 
  * Copyright 1999-2005, Gisle Aas
  * Copyright 1999-2000, Michael A. Chase
  *
@@ -109,6 +108,7 @@ struct p_state {
     bool utf8_mode;
     bool empty_element_tags;
     bool xml_pic;
+    bool backquote;
 
     /* other configuration stuff */
     SV* bool_attr_val;

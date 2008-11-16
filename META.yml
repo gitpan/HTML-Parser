@@ -1,0 +1,15 @@
+--- #YAML:1.0
+name:                HTML-Parser
+version:             3.57
+abstract:            ~
+license:             perl
+author:              ~
+generated_by:        ExtUtils::MakeMaker version 6.4401
+distribution_type:   module
+requires:     
+    HTML::Tagset:                  3
+    Test::More:                    0
+    XSLoader:                      0
+meta-spec:
+    url:     http://module-build.sourceforge.net/META-spec-v1.3.html
+    version: 1.3

@@ -1,6 +1,5 @@
-/* $Id: hparser.c,v 2.134 2007/01/12 10:54:06 gisle Exp $
- *
- * Copyright 1999-2007, Gisle Aas
+/* 
+ * Copyright 1999-2008, Gisle Aas
  * Copyright 1999-2000, Michael A. Chase
  *
  * This library is free software; you can redistribute it and/or
@@ -26,6 +25,7 @@ literal_mode_elem[] =
     {6, "script", 1},
     {5, "style", 1},
     {3, "xmp", 1},
+    {6, "iframe", 1},
     {9, "plaintext", 1},
     {5, "title", 0},
     {8, "textarea", 0},
@@ -455,7 +455,7 @@ report_event(PSTATE* p_state,
 		    if (tokens[i+1].beg) {
 			char *beg = tokens[i+1].beg;
 			STRLEN len = tokens[i+1].end - beg;
-			if (*beg == '"' || *beg == '\'') {
+			if (*beg == '"' || *beg == '\'' || (*beg == '`' && p_state->backquote)) {
 			    assert(len >= 2 && *beg == beg[len-1]);
 			    beg++; len -= 2;
 			}
@@ -1166,7 +1166,7 @@ parse_decl(PSTATE* p_state, char *beg, char *end, U32 utf8, SV* self)
 	    if (s == end)
 		goto PREMATURE;
 
-	    if (*s == '"' || *s == '\'') {
+	    if (*s == '"' || *s == '\'' || (*s == '`' && p_state->backquote)) {
 		char *str_beg = s;
 		s++;
 		while (s < end && *s != *str_beg)
@@ -1337,7 +1337,7 @@ parse_start(PSTATE* p_state, char *beg, char *end, U32 utf8, SV* self)
 		PUSH_TOKEN(s, s);
 		break;
 	    }
-	    if (*s == '"' || *s == '\'') {
+	    if (*s == '"' || *s == '\'' || (*s == '`' && p_state->backquote)) {
 		char *str_beg = s;
 		s++;
 		while (s < end && *s != *str_beg)
@@ -1548,29 +1548,9 @@ parse_buf(pTHX_ PSTATE* p_state, char *beg, char *end, U32 utf8, SV* self)
 
 	while (p_state->literal_mode) {
 	    char *l = p_state->literal_mode;
-	    bool skip_quoted_end = (strEQ(l, "script") || strEQ(l, "style"));
-	    char inside_quote = 0;
-	    bool escape_next = 0;
 	    char *end_text;
 
-	    while (s < end) {
-		if (*s == '<' && !inside_quote)
-		    break;
-		if (skip_quoted_end) {
-		    if (escape_next) {
-			escape_next = 0;
-		    }
-		    else {
-			if (*s == '\\')
-			    escape_next = 1;
-			else if (inside_quote && *s == inside_quote)
-			    inside_quote = 0;
-			else if (*s == '\r' || *s == '\n')
-			    inside_quote = 0;
-			else if (!inside_quote && (*s == '"' || *s == '\''))
-			    inside_quote = *s;
-		    }
-		}
+	    while (s < end && *s != '<') {
 		s++;
 	    }
 
@@ -1761,6 +1741,7 @@ parse(pTHX_
 		if (p_state->literal_mode) {
 		    if (strEQ(p_state->literal_mode, "plaintext") ||
 			strEQ(p_state->literal_mode, "xmp") ||
+			strEQ(p_state->literal_mode, "iframe") ||
 			strEQ(p_state->literal_mode, "textarea"))
 		    {
 			/* rest is considered text */

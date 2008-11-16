@@ -1,6 +1,6 @@
 package HTML::Parser;
 
-# Copyright 1996-2007, Gisle Aas.
+# Copyright 1996-2008, Gisle Aas.
 # Copyright 1999-2000, Michael A. Chase.
 #
 # This library is free software; you can redistribute it and/or
@@ -9,7 +9,7 @@ package HTML::Parser;
 use strict;
 use vars qw($VERSION @ISA);
 
-$VERSION = '3.56';  # $Date: 2007/01/12 09:18:31 $
+$VERSION = "3.57";
 
 require HTML::Entities;
 
@@ -329,6 +329,14 @@ By default, the C<attr> and C<@attr> argspecs will have general
 entities for attribute values decoded.  Enabling this attribute leaves
 entities alone.
 
+=item $p->backquote
+
+=item $p->backquote( $bool )
+
+By default, only ' and " are recognized as quote characters around
+attribute values.  MSIE also recognize backquotes for some reason.
+Enabling this attribute provide compatiblity with this behaviour.
+
 =item $p->boolean_attribute_value( $val )
 
 This method sets the value reported for boolean attributes inside HTML
@@ -351,7 +359,7 @@ By default, "plaintext" element can never be closed. Everything up to
 the end of the document is parsed in CDATA mode.  This historical
 behaviour is what at least MSIE does.  Enabling this attribute makes
 closing "</plaintext>" tag effective and the parsing process will resume
-after seeing this tag.  This emulates gecko-based browsers.
+after seeing this tag.  This emulates early gecko-based browsers.
 
 =item $p->empty_element_tags
 
@@ -682,7 +690,7 @@ The first column on a line is 0.
 Dtext causes the decoded text to be passed.  General entities are
 automatically decoded unless the event was inside a CDATA section or
 was between literal start and end tags (C<script>, C<style>,
-C<xmp>, and C<plaintext>).
+C<xmp>, C<iframe> and C<plaintext>).
 
 The Unicode character set is assumed for entity decoding.  With Perl
 version 5.6 or earlier only the Latin-1 range is supported, and
@@ -701,7 +709,7 @@ C<comment>, C<process>, C<start_document> or C<end_document>.
 
 Is_cdata causes a TRUE value to be passed if the event is inside a CDATA
 section or between literal start and end tags (C<script>,
-C<style>, C<xmp>, and C<plaintext>).
+C<style>, C<xmp>, C<iframe> and C<plaintext>).
 
 if the flag is FALSE for a text event, then you should normally
 either use C<dtext> or decode the entities yourself before the text is
@@ -1224,7 +1232,7 @@ be found at C<http://www.sgml.u-net.com/book/sgml-8.htm>.
 
 =head1 COPYRIGHT
 
- Copyright 1996-2007 Gisle Aas. All rights reserved.
+ Copyright 1996-2008 Gisle Aas. All rights reserved.
  Copyright 1999-2000 Michael A. Chase.  All rights reserved.
 
 This library is free software; you can redistribute it and/or
