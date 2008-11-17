@@ -1,10 +1,10 @@
 --- #YAML:1.0
 name:                HTML-Parser
-version:             3.57
+version:             3.58
 abstract:            ~
 license:             perl
 author:              ~
-generated_by:        ExtUtils::MakeMaker version 6.4401
+generated_by:        ExtUtils::MakeMaker version 6.42_01
 distribution_type:   module
 requires:     
     HTML::Tagset:                  3
