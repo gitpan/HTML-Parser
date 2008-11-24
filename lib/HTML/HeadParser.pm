@@ -76,7 +76,7 @@ use HTML::Entities ();
 use strict;
 use vars qw($VERSION $DEBUG);
 #$DEBUG = 1;
-$VERSION = "3.58";
+$VERSION = "3.59";
 
 =item $hp = HTML::HeadParser->new
 
@@ -228,6 +228,10 @@ sub text
     }
     return if $tag ne 'title';
     $self->{'text'} .= $text;
+}
+
+BEGIN {
+    *utf8_mode = sub { 1 } unless HTML::Entities::UNICODE_SUPPORT;;
 }
 
 1;
