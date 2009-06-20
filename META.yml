@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               HTML-Parser
-version:            3.60
+version:            3.61
 abstract:           HTML parser class
 author:
     - Gisle Aas <gisle@activestate.com>
