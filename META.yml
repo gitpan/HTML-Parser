@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               HTML-Parser
-version:            3.62
+version:            3.63
 abstract:           HTML parser class
 author:
     - Gisle Aas <gisle@activestate.com>
@@ -9,7 +9,8 @@ distribution_type:  module
 configure_requires:
     ExtUtils::MakeMaker:  0
 build_requires:
-    Test::More:  0
+    ExtUtils::MakeMaker:  0
+    Test::More:           0
 requires:
     HTML::Tagset:  3
     perl:          5.006
@@ -21,7 +22,7 @@ no_index:
     directory:
         - t
         - inc
-generated_by:       ExtUtils::MakeMaker version 6.4801
+generated_by:       ExtUtils::MakeMaker version 6.55_02
 meta-spec:
     url:      http://module-build.sourceforge.net/META-spec-v1.4.html
     version:  1.4

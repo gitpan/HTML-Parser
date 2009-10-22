@@ -1,6 +1,6 @@
 use HTML::Entities qw(decode_entities encode_entities encode_entities_numeric);
 
-use Test::More tests => 12;
+use Test::More tests => 17;
 
 $a = "V&aring;re norske tegn b&oslash;r &#230res";
 
@@ -24,6 +24,11 @@ is(encode_entities_numeric($a), "&#x3C;&#x26;&#x3E;&#x22;&#x27;");
 $a = "abcdef";
 is(encode_entities($a, 'a-c'), "&#97;&#98;&#99;def");
 
+$a = "[24/7]\\";
+is(encode_entities($a, '/'), "[24&#47;7]\\");
+is(encode_entities($a, '\\/'), "[24&#47;7]\\");
+is(encode_entities($a, '\\'), "[24/7]&#92;");
+is(encode_entities($a, ']\\'), "[24/7&#93;&#92;");
 
 # See how well it does against rfc1866...
 $ent = $plain = "";
@@ -66,6 +71,8 @@ is(decode_entities("abc&def&ghi&abc;&def;"), "abc&def&ghi&abc;&def;");
 is(decode_entities("&apos;"), "'");
 is(encode_entities("'", "'"), "&#39;");
 
+is(decode_entities("Attention Home&#959&#969n&#1257rs...1&#1109t T&#1110&#1084e E&#957&#1257&#1075"),
+  "Attention Home\x{3BF}\x{3C9}n\x{4E9}rs...1\x{455}t T\x{456}\x{43C}e E\x{3BD}\x{4E9}\x{433}");
 
 __END__
 # Quoted from rfc1866.txt
