@@ -2,7 +2,7 @@
 
 use HTML::Entities;
 
-use Test::More tests => 27;
+use Test::More tests => 26;
 
 SKIP: {
 skip "This perl does not support Unicode or Unicode entities not selected",
@@ -25,15 +25,15 @@ is(decode_entities("&#xFDD0"), "\x{FFFD}");
 is(decode_entities("&#xFDD1"), "\x{FFFD}");
 is(decode_entities("&#xFDE0"), "\x{FFFD}");
 is(decode_entities("&#xFDEF"), "\x{FFFD}");
-is(decode_entities("&#xFFFF"), "\x{FFFD}");
+is(decode_entities("&#xFFFF"), "&#xFFFF");
 is(decode_entities("&#x10FFFF"), "\x{FFFD}");
-is(decode_entities("&#x110000"), chr(0xFFFD));
-is(decode_entities("&#XFFFFFFFF"), chr(0xFFFD));
+is(decode_entities("&#x110000"), "&#x110000");
+is(decode_entities("&#XFFFFFFFF"), "&#XFFFFFFFF");
 
-is(decode_entities("&#0"), "\0");
-is(decode_entities("&#0;"), "\0");
-is(decode_entities("&#x0"), "\0");
-is(decode_entities("&#X0;"), "\0");
+is(decode_entities("&#0"), "&#0");
+is(decode_entities("&#0;"), "&#0;");
+is(decode_entities("&#x0"), "&#x0");
+is(decode_entities("&#X0;"), "&#X0;");
 
 is(decode_entities("&#&aring&#229&#229;&#xFFF"), "&#еее\x{FFF}");
 
@@ -56,8 +56,6 @@ for ([32, 48], [120, 169], [240, 250], [250, 260], [965, 975], [3000, 3005]) {
 }
 ok(!$err);
 
-
-is(decode_entities("&#56256;&#56453;"), chr(0x100085));
 
 is(decode_entities("&#56256;&#56453;"), chr(0x100085));
 

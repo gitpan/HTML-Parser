@@ -1,6 +1,6 @@
 package HTML::Parser;
 
-# Copyright 1996-2008, Gisle Aas.
+# Copyright 1996-2009, Gisle Aas.
 # Copyright 1999-2000, Michael A. Chase.
 #
 # This library is free software; you can redistribute it and/or
@@ -9,7 +9,7 @@ package HTML::Parser;
 use strict;
 use vars qw($VERSION @ISA);
 
-$VERSION = "3.63";
+$VERSION = "3.64";
 
 require HTML::Entities;
 
@@ -92,7 +92,7 @@ sub parse_file
     if (!ref($file) && ref(\$file) ne "GLOB") {
         # Assume $file is a filename
         local(*F);
-        open(F, $file) || return undef;
+        open(F, "<", $file) || return undef;
 	binmode(F);  # should we? good for byte counts
         $opened++;
         $file = *F;
