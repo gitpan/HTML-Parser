@@ -1,5 +1,7 @@
 package HTML::Entities;
 
+=encoding utf8
+
 =head1 NAME
 
 HTML::Entities - Encode or decode strings with HTML entities
@@ -146,7 +148,7 @@ require Exporter;
 @EXPORT = qw(encode_entities decode_entities _decode_entities);
 @EXPORT_OK = qw(%entity2char %char2entity encode_entities_numeric);
 
-$VERSION = "3.64";
+$VERSION = "3.68";
 sub Version { $VERSION; }
 
 require HTML::Parser;  # for fast XS implemented decode_entities
